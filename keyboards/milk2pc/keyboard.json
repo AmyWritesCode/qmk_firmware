@@ -19,8 +19,8 @@
     "url": "https://github.com/Spaceboards/SpaceboardsHardware/tree/master/Keyboards/2%25%20Milk",
     "usb": {
         "device_version": "1.0.0",
-        "pid": "0x0000",
-        "vid": "0xFEED"
+        "pid": "0x3225",
+        "vid": "0x7362"
     },
     "layouts": {
         "LAYOUT": {
