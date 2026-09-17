@@ -1,0 +1,12 @@
+{
+    "name": "QMK Firmware",
+    "exclude_patterns": [
+        "keyboards\/(?!(spaceman|ploopyco|velocifire))",
+        "keyboards\/spaceman\/(?!2_milk)"
+    ],
+    "files": [
+        {
+            "git": 1
+        }
+    ]
+}

@@ -7,7 +7,20 @@
         "**/.build": true,
         "**/*.hex": true,
         "**/*.bin": true,
-        "**/*.uf2": true
+        "**/*.uf2": true,
+        // Only show boards that I own
+        // Probably not the most efficient method but removes the need for multi-headed workspaces
+        "keyboards/[!psv]**": true,
+        "keyboards/p[!l]**": true,
+        "keyboards/pl[!o]**": true,
+        "keyboards/s[!p]**": true,
+        "keyboards/sp[!a]**": true,
+        "keyboards/spa[!c]**": true,
+        "keyboards/spac[!e]**": true,
+        "keyboards/space[!m]**": true,
+        "keyboards/spaceman/[!2]**": true,
+        "keyboards/v[!e]**": true,
+        "keyboards/ve[!l]**": true
     },
     "files.associations": {
         // QMK Filetypes
@@ -25,7 +38,8 @@
         "xstddef": "c",
         "type_traits": "c",
         "utility": "c",
-        "ranges": "c"
+        "ranges": "c",
+        ".kateproject": "json"
     },
     "[markdown]": {
         "editor.trimAutoWhitespace": false,
