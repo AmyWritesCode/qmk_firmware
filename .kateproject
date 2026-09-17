@@ -1,0 +1,11 @@
+{
+    "name": "QMK Firmware",
+    "exclude_patterns": [
+        "keyboards\/(?!(milk2pc|ploopyco|velocifire))"
+    ],
+    "files": [
+        {
+            "git": 1
+        }
+    ]
+}
