@@ -1,0 +1,33 @@
+{
+    "manufacturer": "PyroL",
+    "keyboard_name": "Milk 2%",
+    "maintainer": "AmyWritesCode",
+    "development_board": "promicro",
+    "pin_compatible": "promicro",
+    "features": {
+        "bootmagic": false,
+        "extrakey": true,
+        "mousekey": true,
+        "nkro": true
+    },
+    "matrix_pins": {
+        "direct": [
+            ["D4"],
+            ["D6"]
+        ]
+    },
+    "url": "https://github.com/Spaceboards/SpaceboardsHardware/tree/master/Keyboards/2%25%20Milk",
+    "usb": {
+        "device_version": "1.0.0",
+        "pid": "0x0000",
+        "vid": "0xFEED"
+    },
+    "layouts": {
+        "LAYOUT": {
+            "layout": [
+                {"matrix": [0, 0], "x": 0, "y": 0},
+                {"matrix": [1, 0], "x": 0, "y": 1}
+            ]
+        }
+    }
+}
