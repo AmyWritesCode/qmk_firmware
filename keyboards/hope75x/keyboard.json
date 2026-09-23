@@ -17,8 +17,8 @@
     "processor": "atmega32u4",
     "usb": {
         "device_version": "1.0.0",
-        "pid": "0x7578",
-        "vid": "0x5646"
+        "pid": "0x5A4C",
+        "vid": "0x4213"
     },
     "ws2812": {
         "pin": "D2"
