@@ -17,6 +17,24 @@
  */
 #include QMK_KEYBOARD_H
 
-const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
-    [0] = LAYOUT( MS_BTN4, MS_BTN5, DRAG_SCROLL, MS_BTN2, MS_BTN1, MS_BTN3 )
+/*
+ * ┌────┬───┬───┬────┐
+ * │  A │ B | C │ D  │
+ * │    ├───┴───┤    │
+ * ├────┤       ├────┤
+ * │    │       │    │
+ * │  E │       │ F  │
+ * └────┘       └────┘
+*/
+
+#if defined(SWAP_HANDS_ENABLE)
+const keypos_t PROGMEM hand_swap_config[MATRIX_ROWS][MATRIX_COLS] = {
+  {{0, 4}, {0, 3}, {0, 2}, {0, 1}, {0, 5},{0, 0}},
 };
+#endif
+
+const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
+    [0] = LAYOUT( MS_BTN2, MS_BTN3, DRAG_SCROLL, XXX, KC_SCROLL_LOCK, XXX )
+};
+
+// SH_TOGG | QK_SWAP_HANDS_TOGGLE
