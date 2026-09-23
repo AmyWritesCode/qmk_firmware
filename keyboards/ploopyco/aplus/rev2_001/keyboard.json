@@ -1,0 +1,15 @@
+{
+    "usb": {
+        "device_version": "1.0.0"
+    },
+    "diode_direction": "COL2ROW",
+    "matrix_pins": {
+        "direct": [
+            ["GP7", "GP29", "GP27", "GP23", "GP21", "GP15", "GP8", "GP11"]
+        ]
+    },
+    "ws2812": {
+        "driver": "vendor",
+        "pin": "GP17"
+    }
+}
