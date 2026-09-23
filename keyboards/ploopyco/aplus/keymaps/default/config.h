@@ -18,26 +18,4 @@
 
 #pragma once
 
-#include "quantum.h"
-
-typedef union {
-    uint32_t raw;
-    struct {
-        uint8_t dpi_config;
-    };
-} keyboard_config_t;
-
-extern keyboard_config_t keyboard_config;
-extern uint16_t          dpi_array[];
-
-enum ploopy_keycodes {
-    DPI_CONFIG = QK_KB_0,
-    DRAG_SCROLL,
-};
-
-bool is_drag_scroll;
-
-bool encoder_update_user(uint8_t index, bool clockwise);
-bool encoder_update_kb(uint8_t index, bool clockwise);
-void toggle_drag_scroll(void);
-void cycle_dpi(void);
+#define DYNAMIC_KEYMAP_LAYER_COUNT 8

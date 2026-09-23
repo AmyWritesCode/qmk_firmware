@@ -18,6 +18,7 @@
 
 #include "ploopyco.h"
 #include "analog.h"
+#include "wait.h"
 #include "opt_encoder.h"
 
 // for legacy support
@@ -59,7 +60,7 @@
 #endif
 
 keyboard_config_t keyboard_config;
-uint16_t          dpi_array[] = PLOOPY_DPI_OPTIONS;
+uint16_t dpi_array[] = PLOOPY_DPI_OPTIONS;
 #define DPI_OPTION_SIZE ARRAY_SIZE(dpi_array)
 
 // Trackball State
@@ -139,7 +140,6 @@ void cycle_dpi(void) {
 }
 
 report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
-    mouse_report = pointing_device_task_user(mouse_report);
     if (is_drag_scroll) {
         scroll_accumulated_h += (float)mouse_report.x / PLOOPY_DRAGSCROLL_DIVISOR_H;
         scroll_accumulated_v += (float)mouse_report.y / PLOOPY_DRAGSCROLL_DIVISOR_V;
@@ -164,6 +164,8 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
         mouse_report.y = 0;
     }
 
+    mouse_report = pointing_device_task_user(mouse_report);
+
     return mouse_report;
 }
 
@@ -180,12 +182,9 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
     }
 #endif
 
-    if (!process_record_user(keycode, record)) {
-        return false;
-    }
-
     if (keycode == DPI_CONFIG && record->event.pressed) {
         cycle_dpi();
+        dprintf( "ploopyco.c: cycle_dpi() called, current DPI is %d\n", keyboard_config.dpi_config);
     }
 
     if (keycode == DRAG_SCROLL) {
@@ -198,15 +197,15 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
 #endif
     }
 
+    if (!process_record_user(keycode, record)) {
+        return false;
+    }
+
     return true;
 }
 
 // Hardware Setup
 void keyboard_pre_init_kb(void) {
-    // debug_enable  = true;
-    // debug_matrix  = true;
-    // debug_mouse   = true;
-    // debug_encoder = true;
 
     /* Ground all output pins connected to ground. This provides additional
      * pathways to ground. If you're messing with this, know this: driving ANY
@@ -236,6 +235,12 @@ void pointing_device_init_kb(void) {
         eeconfig_init_kb();
     }
     pointing_device_set_cpi(dpi_array[keyboard_config.dpi_config]);
+
+    pointing_device_init_user();
+}
+
+void keyboard_post_init_kb(void) {
+    keyboard_post_init_user();
 }
 
 void eeconfig_init_kb(void) {
