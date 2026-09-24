@@ -72,75 +72,14 @@ float             scroll_div_array[] = PLOOPY_SCROLL_DIV_OPTIONS;
 #define SCROLL_DIV_OPTION_SIZE ARRAY_SIZE(scroll_div_array)
 
 // Trackball State
-bool  is_scroll_clicked    = false;
+bool  is_volume_scroll     = false;
 bool  is_drag_scroll       = false;
 bool  is_hires_scroll      = true;
 bool  is_scroll_snap_v     = false;
 bool  is_scroll_snap_h     = false;
 float scroll_accumulated_h = 0;
 float scroll_accumulated_v = 0;
-uint32_t last_scroll_time = 0;
-
-
-#ifdef ENCODER_ENABLE
-uint16_t lastScroll        = 0; // Previous confirmed wheel event
-uint16_t lastMidClick      = 0; // Stops scrollwheel from being read if it was pressed
-pin_t    encoder_pins_a[1] = ENCODER_A_PINS;
-pin_t    encoder_pins_b[1] = ENCODER_B_PINS;
-bool     debug_encoder     = false;
-
-bool encoder_update_kb(uint8_t index, bool clockwise) {
-    if (!encoder_update_user(index, clockwise)) {
-        return false;
-    }
-#    ifdef MOUSEKEY_ENABLE
-    tap_code(clockwise ? KC_WH_U : KC_WH_D);
-#    else
-    report_mouse_t mouse_report = pointing_device_get_report();
-    mouse_report.v              = clockwise ? 1 : -1;
-    pointing_device_set_report(mouse_report);
-    pointing_device_send();
-#    endif
-    return true;
-}
-
-void encoder_driver_init(void) {
-    for (uint8_t i = 0; i < ARRAY_SIZE(encoder_pins_a); i++) {
-        gpio_set_pin_input(encoder_pins_a[i]);
-        gpio_set_pin_input(encoder_pins_b[i]);
-    }
-    opt_encoder_init();
-}
-
-void encoder_driver_task(void) {
-    uint16_t p1 = analogReadPin(encoder_pins_a[0]);
-    uint16_t p2 = analogReadPin(encoder_pins_b[0]);
-
-    if (debug_encoder) dprintf("OPT1: %d, OPT2: %d\n", p1, p2);
-
-    int8_t dir = opt_encoder_handler(p1, p2);
-    // If the mouse wheel was just released, do not scroll.
-    if (timer_elapsed(lastMidClick) < PLOOPY_SCROLL_BUTTON_DEBOUNCE) {
-        return;
-    }
-
-    // Limit the number of scrolls per unit time.
-    if (timer_elapsed(lastScroll) < PLOOPY_SCROLL_DEBOUNCE) {
-        return;
-    }
-
-    // Don't scroll if the middle button is depressed.
-    if (is_scroll_clicked) {
-#    ifndef PLOOPY_IGNORE_SCROLL_CLICK
-        return;
-#    endif
-    }
-
-    if (dir == 0) return;
-    encoder_queue_event(0, dir > 0);
-    lastScroll = timer_read();
-}
-#endif
+uint32_t last_scroll_time  = 0;
 
 void toggle_drag_scroll(void) {
     is_drag_scroll ^= 1;
@@ -162,6 +101,10 @@ void toggle_scroll_snap_v(void) {
     if (is_scroll_snap_v) {
         is_scroll_snap_h = false;
     }
+}
+
+void toggle_volume_scroll(void) {
+    is_volume_scroll ^= 1;
 }
 
 void cycle_dpi(void) {
@@ -198,8 +141,19 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
             scroll_accumulated_v += (float)mouse_report.y / scroll_div_array[keyboard_config.scroll_div_config];
         }
 
-        // Throttle scroll reporting rate to reasonable value
-        if (timer_elapsed32(last_scroll_time) < 16) {
+        // Throttle scroll reporting rate based on whether volume scrolling is active
+        if (is_volume_scroll) {
+            if(timer_elapsed(last_scroll_time) > PLOOPY_VOLUME_SCROLL_DEBOUNCE) {
+                if ((float) mouse_report.y < 0) {
+                    tap_code(KC_VOLU);
+                } else if ((float) mouse_report.y > 0) {
+                    tap_code(KC_VOLD);
+                }
+
+                last_scroll_time = timer_read();
+            }
+        }
+        else if (timer_elapsed32(last_scroll_time) < PLOOPY_HIRES_SCROLL_DEBOUNCE) {
             mouse_report.h = 0;
             mouse_report.v = 0;
         } else {
@@ -244,25 +198,28 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
         dprintf("KL: kc: %u, col: %u, row: %u, pressed: %u\n", keycode, record->event.key.col, record->event.key.row, record->event.pressed);
     }
 
-    // Update Timer to prevent accidental scrolls
-#ifdef ENCODER_ENABLE
-    if ((record->event.key.col == ENCODER_BUTTON_COL) && (record->event.key.row == ENCODER_BUTTON_ROW)) {
-        lastMidClick      = timer_read();
-        is_scroll_clicked = record->event.pressed;
-    }
-#endif
-
     if (!process_record_user(keycode, record)) {
         return false;
     }
 
     if (keycode == DRAG_SCROLL) {
-#ifdef PLOOPY_DRAGSCROLL_MOMENTARY
-        is_drag_scroll = record->event.pressed;
+#ifdef PLOOPY_DRAGSCROLL_TAP_OR_HOLD
+        if (record->tap.count) {
+            if (record->event.pressed) {
+                toggle_drag_scroll();
+            }
+        }
+        else {
+            is_drag_scroll = record->event.pressed;
+        }
 #else
+    #ifdef PLOOPY_DRAGSCROLL_MOMENTARY
+        is_drag_scroll = record->event.pressed;
+    #else
         if (record->event.pressed) {
             toggle_drag_scroll();
         }
+    #endif
 #endif
     }
     else if (record->event.pressed) {
@@ -281,6 +238,9 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
                 break;
             case SCROLL_SNAP_V:
                 toggle_scroll_snap_v();
+                break;
+            case VOLUME_SCROLL:
+                toggle_volume_scroll();
                 break;
         }
     }

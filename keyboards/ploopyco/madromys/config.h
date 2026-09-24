@@ -18,13 +18,19 @@
 
 #pragma once
 
+#define TAPPING_TOGGLE 2
+#define PLOOPY_VOLUME_SCROLL_DEBOUNCE 50
+
+/* Hi-res scrolling */
 #define POINTING_DEVICE_HIRES_SCROLL_ENABLE
 #define POINTING_DEVICE_HIRES_SCROLL_MULTIPLIER 120
 #define WHEEL_EXTENDED_REPORT // Necessary to send wheel reports with 16-bit values to avoid overflowing
+#define PLOOPY_HIRES_SCROLL_DEBOUNCE 16
 
-#define PLOOPY_DRAGSCROLL_MOMENTARY
+/* Drag scrolling */
+// #define PLOOPY_DRAGSCROLL_MOMENTARY
+#define PLOOPY_DRAGSCROLL_TAP_OR_HOLD
 #define PLOOPY_DRAGSCROLL_INVERT
-
 #define PLOOPY_DRAGSCROLL_SCROLLOCK
 
 #define UNUSABLE_PINS \
@@ -39,3 +45,8 @@
 #define SPI_SCK_PIN GP2
 #define SPI_MISO_PIN GP0
 #define SPI_MOSI_PIN GP7
+
+/* Remove RGB lighting effects */
+#undef RGBLIGHT_EFFECT_BREATHING
+#undef RGBLIGHT_EFFECT_RAINBOW_MOOD
+#undef RGBLIGHT_EFFECT_RAINBOW_SWIRL
