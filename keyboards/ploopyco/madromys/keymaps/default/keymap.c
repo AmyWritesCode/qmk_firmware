@@ -15,7 +15,51 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include "action_layer.h"
+#include "process_tap_dance.h"
 #include QMK_KEYBOARD_H
+
+enum layer_names {
+    _BASE,
+    _MEDIA,
+    _CONFIG,
+};
+
+enum tap_dances {
+    TD_SEARCH_SWAPHANDS,
+    TD_MEDIA_CONFIG,
+};
+
+void dance_outer_top_each(tap_dance_state_t *state, void *user_data) {
+    if (state->count == 2) {
+        swap_hands_toggle();
+        reset_tap_dance(state);
+    }
+}
+
+void dance_outer_top_finished(tap_dance_state_t *state, void *user_data) {
+    if (state->count == 1) {
+        layer_on(_MEDIA);
+    }
+}
+
+void dance_outer_bottom_each(tap_dance_state_t *state, void *user_data) {
+    if (state->count == 2) {
+        layer_on(_CONFIG);
+        reset_tap_dance(state);
+    }
+}
+
+void dance_outer_bottom_finished(tap_dance_state_t *state, void *user_data) {
+    if (state->count == 1) {
+        layer_on(_MEDIA);
+    }
+}
+
+tap_dance_action_t tap_dance_actions[] = {
+    [TD_SEARCH_SWAPHANDS] = ACTION_TAP_DANCE_FN_ADVANCED(dance_outer_top_each, dance_outer_top_finished, NULL),
+    [TD_MEDIA_CONFIG] = ACTION_TAP_DANCE_FN_ADVANCED(dance_outer_bottom_each, dance_outer_bottom_finished, NULL),
+};
 
 /*
  * ┌────┬───┬───┬────┐
@@ -27,14 +71,21 @@
  * └────┘       └────┘
 */
 
-#if defined(SWAP_HANDS_ENABLE)
 const keypos_t PROGMEM hand_swap_config[MATRIX_ROWS][MATRIX_COLS] = {
-  {{0, 4}, {0, 3}, {0, 2}, {0, 1}, {0, 5},{0, 0}},
+  {{0, 4}, {0, 3}, {0, 2}, {0, 1}, {0, 5}, {0, 0}},
 };
-#endif
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
-    [0] = LAYOUT( MS_BTN2, MS_BTN3, DRAG_SCROLL, XXX, KC_SCROLL_LOCK, XXX )
+    [_BASE] = LAYOUT(
+        MS_BTN1, MS_BTN3, DRG_SCR, TD(TD_SEARCH_SWAPHANDS),
+        MS_BTN1,                   TD(TD_MEDIA_CONFIG)
+    ),
+    [_MEDIA] = LAYOUT(
+        KC_MNXT, KC_MUTE, PB_1,    TG(_MEDIA),
+        KC_MPRV,                   KC_MPLY
+    ),
+    [_CONFIG] = LAYOUT(
+        SET_DPI, XXXXXXX, XXXXXXX, XXXXXXX,
+        HR_SCR,                    TG(_CONFIG)
+    )
 };
-
-// SH_TOGG | QK_SWAP_HANDS_TOGGLE
