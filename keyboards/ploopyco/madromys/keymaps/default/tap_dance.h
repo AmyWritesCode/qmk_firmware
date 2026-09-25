@@ -18,16 +18,9 @@
 #include "process_tap_dance.h"
 
 enum tap_dances {
-    TD_SEARCH_MEDIA,
-    TD_SWAPHANDS_CONFIG,
-    TD_BOOT,
+    TD_SEARCH_SWAPHANDS_CONFIG,
 };
 
-enum layers {
-    LYR_BASE,
-    LYR_MEDIA,
-    LYR_CONFIG,
-};
 
 typedef enum {
     TD_NONE,
@@ -35,11 +28,13 @@ typedef enum {
     TD_SINGLE_TAP,
     TD_SINGLE_HOLD,
     TD_DOUBLE_TAP,
-    TD_DOUBLE_HOLD,
-    TD_DOUBLE_SINGLE_TAP, // Send two single taps
+    TD_DOUBLE_HOLD,         // Equivalent to: double-tap + hold on 2nd tap
+    TD_DOUBLE_SINGLE_TAP,   // Equivalent to: 2 single taps
     TD_TRIPLE_TAP,
-    TD_TRIPLE_HOLD
-} td_state_t;
+    TD_TRIPLE_HOLD          // Equivalent to: triple-tap + hold on 3rd tap
+} td_outcome_t;
 
-void td_swaphands_config_each(tap_dance_state_t *state, void *user_data);
-void td_swaphands_config_finished(tap_dance_state_t *state, void *user_data);
+typedef struct {
+    bool is_press_action;
+    td_outcome_t outcome;
+} td_tap_t;
