@@ -33,18 +33,13 @@ extern uint16_t          dpi_array[];
 extern float             scroll_div_array[];
 
 enum ploopy_keycodes {
-    DPI_CONFIG = QK_KB_0,
+    DPI_CONFIG = SAFE_RANGE,
     DRAG_SCROLL,
     VOLUME_SCROLL,
     SCROLL_DIV_CONFIG,
     HIRES_SCROLL,
     SCROLL_SNAP_V,
     SCROLL_SNAP_H,
-
-    // Aliases
-    SET_DPI = DPI_CONFIG,
-    DRG_SCR = DRAG_SCROLL,
-    HR_SCR = HIRES_SCROLL,
 };
 
 bool encoder_update_user(uint8_t index, bool clockwise);

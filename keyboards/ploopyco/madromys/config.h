@@ -18,7 +18,6 @@
 
 #pragma once
 
-#define TAPPING_TOGGLE 2
 #define PLOOPY_VOLUME_SCROLL_DEBOUNCE 50
 
 /* Hi-res scrolling */
