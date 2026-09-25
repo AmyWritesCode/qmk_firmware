@@ -13,6 +13,7 @@
         "keyboards/spaceman/**": false,
         "keyboards/[!psv]**": true,
         "keyboards/{p[!l]*,pl[!o]*}": true,
+        "keyboards/ploopyco/{mouse,nano,trackball}": true,
         "keyboards/{s[!p]*,sp[!a]*,spa[!c]*,spac[!e]*,space[!m]*,spaceman/[!2]*}": true,
         "keyboards/{v[!e]**,ve[!l]**}": true,
     },

@@ -35,7 +35,8 @@ extern float             scroll_div_array[];
 enum ploopy_keycodes {
     DPI_CONFIG = SAFE_RANGE,
     DRAG_SCROLL,
-    VOLUME_SCROLL,
+    /* Replaced with dedicated media layer */
+    // VOLUME_SCROLL,
     SCROLL_DIV_CONFIG,
     HIRES_SCROLL,
     SCROLL_SNAP_V,
@@ -48,5 +49,6 @@ void toggle_drag_scroll(void);
 void toggle_hires_scroll(void);
 void toggle_scroll_snap_h(void);
 void toggle_scroll_snap_v(void);
+void set_volume_scroll(bool state);
 void cycle_dpi(void);
 void cycle_scroll_div(void);
