@@ -103,8 +103,8 @@ void toggle_scroll_snap_v(void) {
     }
 }
 
-void toggle_volume_scroll(void) {
-    is_volume_scroll ^= 1;
+void set_volume_scroll(bool state) {
+    is_volume_scroll = state;
 }
 
 void cycle_dpi(void) {
@@ -239,9 +239,10 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
             case SCROLL_SNAP_V:
                 toggle_scroll_snap_v();
                 break;
-            case VOLUME_SCROLL:
-                toggle_volume_scroll();
-                break;
+            /* Replaced with dedicated media layer */
+            // case VOLUME_SCROLL:
+            //     toggle_volume_scroll();
+            //     break;
         }
     }
     return true;
