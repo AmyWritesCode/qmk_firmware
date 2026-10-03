@@ -18,7 +18,6 @@
 
 #include "ploopyco.h"
 #include "analog.h"
-#include "opt_encoder.h"
 
 // for legacy support
 #if defined(OPT_DEBOUNCE) && !defined(PLOOPY_SCROLL_DEBOUNCE)
@@ -51,12 +50,6 @@
 #ifndef PLOOPY_DRAGSCROLL_DIVISOR_V
 #    define PLOOPY_DRAGSCROLL_DIVISOR_V 8.0
 #endif
-#ifndef ENCODER_BUTTON_ROW
-#    define ENCODER_BUTTON_ROW 0
-#endif
-#ifndef ENCODER_BUTTON_COL
-#    define ENCODER_BUTTON_COL 0
-#endif
 
 keyboard_config_t keyboard_config;
 uint16_t          dpi_array[] = PLOOPY_DPI_OPTIONS;
@@ -67,66 +60,6 @@ bool  is_scroll_clicked    = false;
 bool  is_drag_scroll       = false;
 float scroll_accumulated_h = 0;
 float scroll_accumulated_v = 0;
-
-#ifdef ENCODER_ENABLE
-uint16_t lastScroll        = 0; // Previous confirmed wheel event
-uint16_t lastMidClick      = 0; // Stops scrollwheel from being read if it was pressed
-pin_t    encoder_pins_a[1] = ENCODER_A_PINS;
-pin_t    encoder_pins_b[1] = ENCODER_B_PINS;
-bool     debug_encoder     = false;
-
-bool encoder_update_kb(uint8_t index, bool clockwise) {
-    if (!encoder_update_user(index, clockwise)) {
-        return false;
-    }
-#    ifdef MOUSEKEY_ENABLE
-    tap_code(clockwise ? MS_WHLU : MS_WHLD);
-#    else
-    report_mouse_t mouse_report = pointing_device_get_report();
-    mouse_report.v              = clockwise ? 1 : -1;
-    pointing_device_set_report(mouse_report);
-    pointing_device_send();
-#    endif
-    return true;
-}
-
-void encoder_driver_init(void) {
-    for (uint8_t i = 0; i < ARRAY_SIZE(encoder_pins_a); i++) {
-        gpio_set_pin_input(encoder_pins_a[i]);
-        gpio_set_pin_input(encoder_pins_b[i]);
-    }
-    opt_encoder_init();
-}
-
-void encoder_driver_task(void) {
-    uint16_t p1 = analogReadPin(encoder_pins_a[0]);
-    uint16_t p2 = analogReadPin(encoder_pins_b[0]);
-
-    if (debug_encoder) dprintf("OPT1: %d, OPT2: %d\n", p1, p2);
-
-    int8_t dir = opt_encoder_handler(p1, p2);
-    // If the mouse wheel was just released, do not scroll.
-    if (timer_elapsed(lastMidClick) < PLOOPY_SCROLL_BUTTON_DEBOUNCE) {
-        return;
-    }
-
-    // Limit the number of scrolls per unit time.
-    if (timer_elapsed(lastScroll) < PLOOPY_SCROLL_DEBOUNCE) {
-        return;
-    }
-
-    // Don't scroll if the middle button is depressed.
-    if (is_scroll_clicked) {
-#    ifndef PLOOPY_IGNORE_SCROLL_CLICK
-        return;
-#    endif
-    }
-
-    if (dir == 0) return;
-    encoder_queue_event(0, dir > 0);
-    lastScroll = timer_read();
-}
-#endif
 
 void toggle_drag_scroll(void) {
     is_drag_scroll ^= 1;
@@ -172,14 +105,6 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
         dprintf("KL: kc: %u, col: %u, row: %u, pressed: %u\n", keycode, record->event.key.col, record->event.key.row, record->event.pressed);
     }
 
-    // Update Timer to prevent accidental scrolls
-#ifdef ENCODER_ENABLE
-    if ((record->event.key.col == ENCODER_BUTTON_COL) && (record->event.key.row == ENCODER_BUTTON_ROW)) {
-        lastMidClick      = timer_read();
-        is_scroll_clicked = record->event.pressed;
-    }
-#endif
-
     if (!process_record_user(keycode, record)) {
         return false;
     }
@@ -206,7 +131,6 @@ void keyboard_pre_init_kb(void) {
     // debug_enable  = true;
     // debug_matrix  = true;
     // debug_mouse   = true;
-    // debug_encoder = true;
 
     /* Ground all output pins connected to ground. This provides additional
      * pathways to ground. If you're messing with this, know this: driving ANY
