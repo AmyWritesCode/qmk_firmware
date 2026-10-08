@@ -16,47 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ploopyco.h"
 #include "analog.h"
-
-// for legacy support
-#if defined(OPT_DEBOUNCE) && !defined(PLOOPY_SCROLL_DEBOUNCE)
-#    define PLOOPY_SCROLL_DEBOUNCE OPT_DEBOUNCE
-#endif
-#if defined(SCROLL_BUTT_DEBOUNCE) && !defined(PLOOPY_SCROLL_BUTTON_DEBOUNCE)
-#    define PLOOPY_SCROLL_BUTTON_DEBOUNCE SCROLL_BUTT_DEBOUNCE
-#endif
-
-#ifndef PLOOPY_SCROLL_DEBOUNCE
-#    define PLOOPY_SCROLL_DEBOUNCE 5
-#endif
-#ifndef PLOOPY_SCROLL_BUTTON_DEBOUNCE
-#    define PLOOPY_SCROLL_BUTTON_DEBOUNCE 100
-#endif
-
-#ifndef PLOOPY_DPI_OPTIONS
-#    define PLOOPY_DPI_OPTIONS \
-        { 600, 900, 1200, 1600, 2400 }
-#    ifndef PLOOPY_DPI_DEFAULT
-#        define PLOOPY_DPI_DEFAULT 1
-#    endif
-#endif
-#ifndef PLOOPY_DPI_DEFAULT
-#    define PLOOPY_DPI_DEFAULT 0
-#endif
-#ifndef PLOOPY_SCROLL_DIV_OPTIONS
-#    define PLOOPY_SCROLL_DIV_OPTIONS \
-        { 0.5, 1.0, 1.5, 2.0, 4.0 }
-#    ifndef PLOOPY_SCROLL_DIV_DEFAULT
-#        define PLOOPY_SCROLL_DIV_DEFAULT 0
-#    endif
-#endif
-#ifndef PLOOPY_SCROLL_DIV_DEFAULT
-#    define PLOOPY_SCROLL_DIV_DEFAULT 0
-#endif
-#ifndef PLOOPY_DRAGSCROLL_H_COEF
-#    define PLOOPY_DRAGSCROLL_H_COEF 1.0
-#endif
+#include "config_defaults.h"
+#include "ploopyco.h"
 
 keyboard_config_t keyboard_config;
 uint16_t          dpi_array[] = PLOOPY_DPI_OPTIONS;
@@ -65,17 +27,29 @@ float             scroll_div_array[] = PLOOPY_SCROLL_DIV_OPTIONS;
 #define SCROLL_DIV_OPTION_SIZE ARRAY_SIZE(scroll_div_array)
 
 // Trackball State
-bool  is_scroll_clicked    = false;
 bool  is_drag_scroll       = false;
+bool  is_drag_select       = false;
+bool  is_volume_scroll     = false;
 bool  is_hires_scroll      = true;
 bool  is_scroll_snap_v     = false;
 bool  is_scroll_snap_h     = false;
 float scroll_accumulated_h = 0;
 float scroll_accumulated_v = 0;
-uint32_t last_scroll_time = 0;
+uint32_t last_scroll_time  = 0;
 
 void toggle_drag_scroll(void) {
     is_drag_scroll ^= 1;
+    if (is_drag_scroll) {
+        is_volume_scroll = false;
+    }
+}
+
+void toggle_drag_select(void) {
+    is_drag_select ^= 1;
+}
+
+void toggle_volume_scroll(void) {
+    is_volume_scroll ^= 1;
 }
 
 void toggle_hires_scroll(void) {
@@ -97,24 +71,53 @@ void toggle_scroll_snap_v(void) {
 }
 
 void cycle_dpi(void) {
+    uint8_t prev_dpi = keyboard_config.dpi_config;
     keyboard_config.dpi_config = (keyboard_config.dpi_config + 1) % DPI_OPTION_SIZE;
+#ifndef PLOOPY_CONFIRM_UPDATE_EEPROM
     eeconfig_update_kb(keyboard_config.raw);
+#endif
     pointing_device_set_cpi(dpi_array[keyboard_config.dpi_config]);
+    printf("DPI / Scroll Div.: %d -> %d / %d", \
+        prev_dpi, keyboard_config.dpi_config, keyboard_config.scroll_div_config);
 }
 
 void cycle_scroll_div(void) {
+    uint8_t prev_scroll_div = keyboard_config.scroll_div_config;
     keyboard_config.scroll_div_config = (keyboard_config.scroll_div_config + 1) % SCROLL_DIV_OPTION_SIZE;
+#ifndef PLOOPY_CONFIRM_UPDATE_EEPROM
     eeconfig_update_kb(keyboard_config.raw);
+#endif
+    printf("DPI / Scroll Div.: %d / %d -> %d", \
+        keyboard_config.dpi_config, prev_scroll_div, keyboard_config.scroll_div_config);
 }
 
 report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
     static uint16_t hires_scroll_res = 1;
+
+    if (is_volume_scroll) {
+        if(timer_elapsed(last_scroll_time) > PLOOPY_VLMSCROLL_DEBOUNCE) {
+            if ((float) mouse_report.y < 0) {
+                tap_code(KC_VOLU);
+            } else if ((float) mouse_report.y > 0) {
+                tap_code(KC_VOLD);
+            }
+
+            last_scroll_time = timer_read();
+        }
+
+        mouse_report.x = 0;
+        mouse_report.y = 0;
+    }
 #ifdef PLOOPY_DRAGSCROLL_SCROLLOCK
-    if (is_drag_scroll || host_keyboard_led_state().scroll_lock) {
+    else if (is_drag_scroll || host_keyboard_led_state().scroll_lock) {
 #else
-    if (is_drag_scroll) {
+    else if (is_drag_scroll) {
 #endif
         hires_scroll_res = pointing_device_get_hires_scroll_resolution();
+
+        if (is_drag_select) {
+            mouse_report.buttons |= MOUSE_BTN1;
+        }
 
         if (is_scroll_snap_v) {
             scroll_accumulated_h = 0;
@@ -129,7 +132,7 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
         }
 
         // Throttle scroll reporting rate to reasonable value
-        if (timer_elapsed32(last_scroll_time) < 16) {
+        if (timer_elapsed32(last_scroll_time) < PLOOPY_HRSCROLL_DEBOUNCE) {
             mouse_report.h = 0;
             mouse_report.v = 0;
         } else {
@@ -161,7 +164,6 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
             }
         }
 
-        // Clear the X and Y values of the mouse report
         mouse_report.x = 0;
         mouse_report.y = 0;
     }
@@ -178,20 +180,19 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
         return false;
     }
 
-    if (keycode == DPI_CONFIG && record->event.pressed) {
-        cycle_dpi();
-    }
-
     if (keycode == DRAG_SCROLL) {
-#ifdef PLOOPY_DRAGSCROLL_MOMENTARY
-        is_drag_scroll = record->event.pressed;
-#else
-        if (record->event.pressed) {
+        if (record->tap.count && record->event.pressed) {
             toggle_drag_scroll();
+        } else {
+            is_drag_scroll = record->event.pressed;
         }
-#endif
-    }
-    else if (record->event.pressed) {
+    } else if (keycode == VOLUME_SCROLL) {
+        if (record->tap.count && record->event.pressed) {
+            toggle_volume_scroll();
+        } else {
+            is_volume_scroll = record->event.pressed;
+        }
+    } else if (record->event.pressed) {
         switch(keycode) {
             case DPI_CONFIG:
                 cycle_dpi();
@@ -207,6 +208,13 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
                 break;
             case SCROLL_SNAP_V:
                 toggle_scroll_snap_v();
+                break;
+            case SAVE_SCROLL_CONFIG:
+#ifdef PLOOPY_CONFIRM_UPDATE_EEPROM
+                eeconfig_update_kb(keyboard_config.raw);
+#endif
+                break;
+            default:
                 break;
         }
     }
@@ -251,7 +259,6 @@ void pointing_device_init_kb(void) {
     }
     pointing_device_set_cpi(dpi_array[keyboard_config.dpi_config]);
 }
-
 
 void eeconfig_init_kb(void) {
     keyboard_config.dpi_config = PLOOPY_DPI_DEFAULT;

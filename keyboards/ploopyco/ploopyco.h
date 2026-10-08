@@ -31,17 +31,24 @@ typedef union {
 extern keyboard_config_t keyboard_config;
 extern uint16_t          dpi_array[];
 extern float             scroll_div_array[];
+extern bool              is_drag_scroll;
+extern bool              is_drag_select;
+extern bool              is_volume_scroll;
 
 enum ploopy_keycodes {
-    DPI_CONFIG = QK_KB_0,
+    DPI_CONFIG = SAFE_RANGE,
     DRAG_SCROLL,
+    VOLUME_SCROLL,
     SCROLL_DIV_CONFIG,
     HIRES_SCROLL,
     SCROLL_SNAP_V,
     SCROLL_SNAP_H,
+    SAVE_SCROLL_CONFIG,
 };
 
+void toggle_drag_select(void);
 void toggle_drag_scroll(void);
+void toggle_volume_scroll(void);
 void toggle_hires_scroll(void);
 void toggle_scroll_snap_h(void);
 void toggle_scroll_snap_v(void);

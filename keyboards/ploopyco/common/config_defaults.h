@@ -1,0 +1,33 @@
+// Clear legacy configs
+#undef PLOOPY_SCROLL_DEBOUNCE
+#undef PLOOPY_SCROLL_BUTTON_DEBOUNCE
+
+#ifndef PLOOPY_DPI_OPTIONS
+#    define PLOOPY_DPI_OPTIONS \
+        { 600, 900, 1200, 1600, 2400 }
+#    ifndef PLOOPY_DPI_DEFAULT
+#        define PLOOPY_DPI_DEFAULT 1
+#    endif
+#endif
+#ifndef PLOOPY_DPI_DEFAULT
+#    define PLOOPY_DPI_DEFAULT 0
+#endif
+#ifndef PLOOPY_SCROLL_DIV_OPTIONS
+#    define PLOOPY_SCROLL_DIV_OPTIONS \
+        { 0.5, 1.0, 1.5, 2.0, 4.0 }
+#    ifndef PLOOPY_SCROLL_DIV_DEFAULT
+#        define PLOOPY_SCROLL_DIV_DEFAULT 0
+#    endif
+#endif
+#ifndef PLOOPY_SCROLL_DIV_DEFAULT
+#    define PLOOPY_SCROLL_DIV_DEFAULT 0
+#endif
+#ifndef PLOOPY_DRAGSCROLL_H_COEF
+#    define PLOOPY_DRAGSCROLL_H_COEF 1.0
+#endif
+#ifndef PLOOPY_HRSCROLL_DEBOUNCE
+#    define PLOOPY_HRSCROLL_DEBOUNCE 16
+#endif
+#ifndef PLOOPY_VLMSCROLL_DEBOUNCE
+#    define PLOOPY_VLMSCROLL_DEBOUNCE 50
+#endif
