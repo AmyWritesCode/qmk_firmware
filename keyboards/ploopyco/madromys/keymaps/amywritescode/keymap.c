@@ -18,6 +18,7 @@
 
 #include "amywritescode.h"
 #include "tap_dance.h"
+#include "trackball_mode.h"
 
 /* ════════════════════ *
  *     Declarations     *
@@ -143,15 +144,15 @@ layer_state_t layer_state_set_user(layer_state_t state) {
     // Handle scroll modifiers here to ensure congruence with layer state
     switch (get_highest_layer(state)) {
         case L_MEDIA:
-            is_volume_scroll = true;
+            set_volume_scroll(true);
             break;
         case L_CONFIG:
             // Reset scroll type to default
-            is_volume_scroll = false;
-            is_drag_scroll = false;
+            set_volume_scroll(false);
+            set_drag_scroll(false);
             break;
         default:
-            is_volume_scroll = false;
+            set_volume_scroll(false);
             break;
     }
 

@@ -19,6 +19,7 @@
 #include "analog.h"
 #include "config_defaults.h"
 #include "ploopyco.h"
+#include "trackball_mode.h"
 
 keyboard_config_t keyboard_config;
 uint16_t          dpi_array[] = PLOOPY_DPI_OPTIONS;
@@ -27,48 +28,9 @@ float             scroll_div_array[] = PLOOPY_SCROLL_DIV_OPTIONS;
 #define SCROLL_DIV_OPTION_SIZE ARRAY_SIZE(scroll_div_array)
 
 // Trackball State
-bool  is_drag_scroll       = false;
-bool  is_drag_select       = false;
-bool  is_volume_scroll     = false;
-bool  is_hires_scroll      = true;
-bool  is_scroll_snap_v     = false;
-bool  is_scroll_snap_h     = false;
 float scroll_accumulated_h = 0;
 float scroll_accumulated_v = 0;
 uint32_t last_scroll_time  = 0;
-
-void toggle_drag_scroll(void) {
-    is_drag_scroll ^= 1;
-    if (is_drag_scroll) {
-        is_volume_scroll = false;
-    }
-}
-
-void toggle_drag_select(void) {
-    is_drag_select ^= 1;
-}
-
-void toggle_volume_scroll(void) {
-    is_volume_scroll ^= 1;
-}
-
-void toggle_hires_scroll(void) {
-    is_hires_scroll ^= 1;
-}
-
-void toggle_scroll_snap_h(void) {
-    is_scroll_snap_h ^= 1;
-    if (is_scroll_snap_h) {
-        is_scroll_snap_v = false;
-    }
-}
-
-void toggle_scroll_snap_v(void) {
-    is_scroll_snap_v ^= 1;
-    if (is_scroll_snap_v) {
-        is_scroll_snap_h = false;
-    }
-}
 
 void cycle_dpi(void) {
     uint8_t prev_dpi = keyboard_config.dpi_config;
@@ -92,7 +54,7 @@ void cycle_scroll_div(void) {
 }
 
 report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
-    static uint16_t hires_scroll_res = 1;
+    static uint16_t hires_scroll_resolution = 1;
 
     if (is_volume_scroll) {
         if(timer_elapsed(last_scroll_time) > PLOOPY_VLMSCROLL_DEBOUNCE) {
@@ -107,14 +69,12 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
 
         mouse_report.x = 0;
         mouse_report.y = 0;
-    }
+    } else if (is_drag_scroll
 #ifdef PLOOPY_DRAGSCROLL_SCROLLOCK
-    else if (is_drag_scroll || host_keyboard_led_state().scroll_lock) {
-#else
-    else if (is_drag_scroll) {
+        || host_keyboard_led_state().scroll_lock
 #endif
-        hires_scroll_res = pointing_device_get_hires_scroll_resolution();
-
+    ) {
+        // Based on: https://github.com/adept-hires-scroll-mod/qmk_firmware
         if (is_drag_select) {
             mouse_report.buttons |= MOUSE_BTN1;
         }
@@ -152,14 +112,14 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
 
             } else {
                 // Emulate no hires scrolling by only reporting in increments of the resolution
-                mouse_report.h = (int16_t)scroll_accumulated_h / hires_scroll_res * hires_scroll_res;
+                hires_scroll_resolution = pointing_device_get_hires_scroll_resolution();
+                mouse_report.h = (int16_t)scroll_accumulated_h * hires_scroll_resolution;
 #ifdef PLOOPY_DRAGSCROLL_INVERT
-                mouse_report.v = -(int16_t)scroll_accumulated_v / hires_scroll_res * hires_scroll_res;
-                scroll_accumulated_v += mouse_report.v;
+                mouse_report.v = -(int16_t)scroll_accumulated_v * hires_scroll_resolution;
 #else
-                mouse_report.v = (int16_t)scroll_accumulated_v / hires_scroll_res * hires_scroll_res;
-                scroll_accumulated_v -= mouse_report.v;
+                mouse_report.v = (int16_t)scroll_accumulated_v * hires_scroll_resolution;
 #endif
+                scroll_accumulated_v -= mouse_report.v;
                 scroll_accumulated_h -= mouse_report.h;
             }
         }
@@ -172,9 +132,12 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
 }
 
 bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
-    if (debug_mouse) {
-        dprintf("KL: kc: %u, col: %u, row: %u, pressed: %u\n", keycode, record->event.key.col, record->event.key.row, record->event.pressed);
-    }
+#ifdef CONSOLE_ENABLE
+    uprintf("KL: kc={0x%04X,%s}, row/col={%2u,%2u}, pressed=%u, time=%5u, int=%u, count=%u\n", \
+        keycode, get_keycode_string(keycode), record->event.key.row, record->event.key.col, \
+        record->event.pressed, record->event.time, record->tap.interrupted, record->tap.count \
+    );
+#endif
 
     if (!process_record_user(keycode, record)) {
         return false;
@@ -182,15 +145,11 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
 
     if (keycode == DRAG_SCROLL) {
         if (record->tap.count && record->event.pressed) {
-            toggle_drag_scroll();
-        } else {
-            is_drag_scroll = record->event.pressed;
+            set_drag_scroll(record->event.pressed);
         }
     } else if (keycode == VOLUME_SCROLL) {
         if (record->tap.count && record->event.pressed) {
-            toggle_volume_scroll();
-        } else {
-            is_volume_scroll = record->event.pressed;
+            set_volume_scroll(record->event.pressed);
         }
     } else if (record->event.pressed) {
         switch(keycode) {
