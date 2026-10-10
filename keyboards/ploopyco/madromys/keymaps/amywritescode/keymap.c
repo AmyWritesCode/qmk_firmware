@@ -1,6 +1,4 @@
-/* Copyright 2023 Colin Lam (Ploopy Corporation)
- * Copyright 2020 Christopher Courtney, aka Drashna Jael're  (@drashna) <drashna@live.com>
- * Copyright 2019 Sunjun Kim
+/* Copyright 2026 AmyWritesCode
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,7 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "amywritescode.h"
+#include QMK_KEYBOARD_H
 #include "tap_dance.h"
 #include "trackball_mode.h"
 
@@ -24,43 +22,47 @@
  *     Declarations     *
  * ════════════════════ */
 
-enum layer {
-    L_HAND,
+typedef enum {
     L_BASE,
-    L_SELECT,
+    L_HAND,
     L_SCROLL,
     L_MEDIA,
     L_CONFIG,
+} layer_t;
+
+enum td_keycodes_user {
+    PLAY_STOP_MEDIA_TOGGLE,
+    SELECT_P1_SWAP_HANDS_TOGGLE,
+    EXIT_SAVE_CONFIG,
 };
 
-enum tap_dance_routine {
-    TDR_MEDIA,
-    TDR_SELECT_MOD_SWAP,
-    TDR_EXIT_SAVE_CONFIG,
-};
+td_step_state_t td_play_stop_media_toggle_step_state = TD_NONE;
+td_step_state_t td_select_p1_swap_hands_toggle_step_state = TD_NONE;
 
-tap_dance_step_t tdr_media_current_step = TD_NONE;
-tap_dance_step_t tdr_select_mod_swap_current_step = TD_NONE;
-void tdr_media_each(tap_dance_state_t *state, void *user_data);
-void tdr_media_finished(tap_dance_state_t *state, void *user_data);
-void tdr_media_reset(tap_dance_state_t *state, void *user_data);
+void td_play_stop_media_toggle_each(tap_dance_state_t *state, void *user_data);
+void td_play_stop_media_toggle_finished(tap_dance_state_t *state, void *user_data);
+void td_play_stop_media_toggle_reset(tap_dance_state_t *state, void *user_data);
 
-void tdr_select_mod_swap_each(tap_dance_state_t *state, void *user_data);
-void tdr_select_mod_swap_finished(tap_dance_state_t *state, void *user_data);
-void tdr_select_mod_swap_reset(tap_dance_state_t *state, void *user_data);
+void td_select_p1_swap_hands_toggle_each(tap_dance_state_t *state, void *user_data);
+void td_select_p1_swap_hands_toggle_finished(tap_dance_state_t *state, void *user_data);
+void td_select_p1_swap_hands_toggle_reset(tap_dance_state_t *state, void *user_data);
 
-void tdr_exit_save_config_fn(tap_dance_state_t *state, void *user_data);
+void td_exit_save_config_fn(tap_dance_state_t *state, void *user_data);
 
 tap_dance_action_t tap_dance_actions[] = {
-    [TDR_MEDIA] = ACTION_TAP_DANCE_FN_ADVANCED(tdr_media_each, tdr_media_finished, tdr_media_reset),
-    [TDR_SELECT_MOD_SWAP] = ACTION_TAP_DANCE_FN_ADVANCED( \
-        tdr_select_mod_swap_each, tdr_select_mod_swap_finished, tdr_select_mod_swap_reset),
-    [TDR_EXIT_SAVE_CONFIG] = ACTION_TAP_DANCE_FN(tdr_exit_save_config_fn),
+    [PLAY_STOP_MEDIA_TOGGLE] = ACTION_TAP_DANCE_FN_ADVANCED( \
+        td_play_stop_media_toggle_each, td_play_stop_media_toggle_finished, td_play_stop_media_toggle_reset),
+    [SELECT_P1_SWAP_HANDS_TOGGLE] = ACTION_TAP_DANCE_FN_ADVANCED( \
+        td_select_p1_swap_hands_toggle_each, td_select_p1_swap_hands_toggle_finished, td_select_p1_swap_hands_toggle_reset),
+    [EXIT_SAVE_CONFIG] = ACTION_TAP_DANCE_FN(td_exit_save_config_fn),
 };
 
 const keypos_t PROGMEM hand_swap_config[MATRIX_ROWS][MATRIX_COLS] = {
   {{0, 4}, {0, 3}, {0, 2}, {0, 1}, {0, 5},{0, 0}},
 };
+
+uint32_t last_layer_interaction_time_media  = 0;
+uint32_t last_layer_interaction_time_config = 0;
 
 /*
  * Layer flow:
@@ -70,35 +72,31 @@ const keypos_t PROGMEM hand_swap_config[MATRIX_ROWS][MATRIX_COLS] = {
  *                 └─────────────────────────────┘
  */
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
-    [L_HAND] = LAYOUT(
-        XXX,                XXX,            XXX,            XXX,
-        DF(L_BASE),                                         DF(L_BASE)
-    ),
     [L_BASE] = LAYOUT(
-        MS_BTN3,            TD(TDR_MEDIA),  DRAG_SCROLL,    MS_BTN2,
-        MS_BTN1,                                            TD(TDR_SELECT_MOD_SWAP)
+        MS_BTN3,    TD(SELECT_P1_SWAP_HANDS_TOGGLE),    LT(L_SCROLL, KC_SCRL),  MS_BTN2,
+        MS_BTN1,                                                                TD(PLAY_STOP_MEDIA_TOGGLE)
     ),
-    [L_SELECT] = LAYOUT(
-        TG(L_SELECT),        _______,        _______,       TG(L_SELECT),
-        TG(L_SELECT),                                       TG(L_SELECT)
+    [L_HAND] = LAYOUT(
+        XXX,        XXX,    XXX,    XXX,
+        TO(L_BASE),                 SH_TOGG
     ),
     [L_SCROLL] = LAYOUT(
-        SCROLL_SNAP_V,      SCROLL_SNAP_H,  TG(L_SCROLL),   HIRES_SCROLL,
-        _______,                                            TO(L_CONFIG)
+        SCROLL_SNAP_V,  SCROLL_SNAP_H,  TG(L_SCROLL),   HIRES_SCROLL,
+        _______,                                        TO(L_CONFIG)
     ),
     [L_MEDIA] = LAYOUT(
-        KC_MNXT,            TG(L_MEDIA),    KC_MUTE,        XXX,
-        KC_MPRV,                                            XXX
+        KC_MNXT,    XXX,    KC_MUTE,    XXX,
+        KC_MPRV,                        TG(L_MEDIA)
     ),
 #ifdef DYNAMIC_TAPPING_TERM_ENABLE
     [L_CONFIG] = LAYOUT(
-        DPI_CONFIG,         DT_UP,          DT_DOWN,        DT_PRNT,
-        SCROLL_DIV_CONFIG,                                  TD(TDR_EXIT_SAVE_CONFIG)
+        DPI_CONFIG,         DT_UP,  DT_DOWN,    DT_PRNT,
+        SCROLL_DIV_CONFIG,                      TD(EXIT_SAVE_CONFIG)
     ),
 #else
     [L_CONFIG] = LAYOUT(
-        DPI_CONFIG,         XXX,            XXX,            XXX,
-        SCROLL_DIV_CONFIG,                                  TD(TDR_EXIT_SAVE_CONFIG)
+        DPI_CONFIG,         XXX,    XXX,    XXX,
+        SCROLL_DIV_CONFIG,                  TD(EXIT_SAVE_CONFIG)
     ),
 #endif
 };
@@ -109,6 +107,9 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
 uint16_t get_tapping_term(uint16_t keycode, keyrecord_t *record) {
     switch (keycode) {
+        case TD(PLAY_STOP_MEDIA_TOGGLE):
+        case TO(L_CONFIG):
+            return 2000;
         case SAVE_SCROLL_CONFIG:
             return 5000;
         default:
@@ -116,129 +117,159 @@ uint16_t get_tapping_term(uint16_t keycode, keyrecord_t *record) {
     }
 }
 
+uint16_t matrix_scan_set_layer_timeout(layer_t layer, int16_t timer) {
+    if (layer_state_is(layer) && timer_elapsed(timer) > PLOOPY_INACTIVE_LAYER_TIMEOUT) {
+        layer_off(layer);
+        return 0;
+    }
+    return timer;
+}
+
+void matrix_scan_user(void) {
+    last_layer_interaction_time_media = matrix_scan_set_layer_timeout(L_MEDIA, last_layer_interaction_time_media);
+    last_layer_interaction_time_config = matrix_scan_set_layer_timeout(L_CONFIG, last_layer_interaction_time_config);
+}
+
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+    if (layer_state_is(L_MEDIA)) {
+        last_layer_interaction_time_media = timer_read();
+    }
+    if (layer_state_is(L_CONFIG)) {
+        last_layer_interaction_time_media = timer_read();
+    }
+
     switch (keycode) {
-        case DF(L_BASE):
-            if (record->event.key.col == 5) {
-                // If the bottom-right button is pressed (left-click in LH mode), assume LH mode for this boot
-                swap_hands_on();
+        case SH_TOGG:
+            if (layer_state_is(L_HAND)) {
+                layer_off(L_HAND);
             }
             break;
         case DRAG_SCROLL:
             if (record->event.pressed) {
-                layer_on(L_SCROLL);
-            } else {
+                if (!layer_state_is(L_SCROLL)) {
+                    layer_on(L_SCROLL);
+                }
+            } else if (layer_state_is(L_SCROLL)) {
                 layer_off(L_SCROLL);
             }
-            break;
-        case LT(0, KC_NO):
-            send_string("");
             break;
         default:
             break;
     }
+
     return true;
+}
+
+void keyboard_post_init_user(void) {
+    // Start on hand-selection layer
+    // This allows the starting handedness to be set per session,
+    // and removes the need for EEPROM writes
+    layer_on(L_HAND);
+}
+
+void post_process_record_user(uint16_t keycode, keyrecord_t *record) {
+#ifdef DYNAMIC_TAPPING_TERM_ENABLE
+    if (keycode == DT_UP || keycode == DT_DOWN) {
+        uprintf("Tapping term: %u -> %u", \
+            keycode == DT_UP ? g_tapping_term - DYNAMIC_TAPPING_TERM_INCREMENT : g_tapping_term + DYNAMIC_TAPPING_TERM_INCREMENT, \
+            g_tapping_term \
+        );
+    }
+#endif
 }
 
 layer_state_t layer_state_set_user(layer_state_t state) {
     // Handle scroll modifiers here to ensure congruence with layer state
     switch (get_highest_layer(state)) {
         case L_MEDIA:
+            last_layer_interaction_time_media = timer_read();
             set_volume_scroll(true);
+            set_drag_select(false);
             break;
         case L_CONFIG:
+            last_layer_interaction_time_config = timer_read();
             // Reset scroll type to default
             set_volume_scroll(false);
             set_drag_scroll(false);
+            set_drag_select(false);
             break;
         default:
             set_volume_scroll(false);
+            set_drag_select(false);
             break;
     }
 
     return state;
 }
 
-
 /* ═════════════════ *
  *     Tap-dance     *
  * ═════════════════ */
-
-void tdr_media_each(tap_dance_state_t *state, void *user_data) {
+void td_play_stop_media_toggle_each(tap_dance_state_t *state, void *user_data) {
     if (state->count == 2) {
         layer_move(L_MEDIA);
         state->finished = true;
     }
 }
 
-void tdr_media_finished(tap_dance_state_t *state, void *user_data) {
-    tdr_media_current_step = get_current_dance_step(state);
-    switch (tdr_media_current_step) {
+void td_play_stop_media_toggle_finished(tap_dance_state_t *state, void *user_data) {
+    td_play_stop_media_toggle_step_state = td_get_step_state(state);
+    switch (td_play_stop_media_toggle_step_state) {
         case TD_SINGLE_TAP:
             register_code(KC_MEDIA_PLAY_PAUSE);
             break;
         case TD_SINGLE_HOLD:
-            layer_on(L_MEDIA);
+            register_code(KC_MEDIA_STOP);
             break;
         default:
             break;
     }
 }
 
-void tdr_media_reset(tap_dance_state_t *state, void *user_data) {
-    switch (tdr_media_current_step) {
+void td_play_stop_media_toggle_reset(tap_dance_state_t *state, void *user_data) {
+    switch (td_play_stop_media_toggle_step_state) {
         case TD_SINGLE_TAP:
             unregister_code(KC_MEDIA_PLAY_PAUSE);
             break;
         case TD_SINGLE_HOLD:
-            layer_off(L_MEDIA);
+            unregister_code(KC_MEDIA_STOP);
             break;
         default:
             break;
     }
-    tdr_media_current_step = TD_NONE;
+    td_play_stop_media_toggle_step_state = TD_NONE;
 }
 
-void toggle_drag_select_user(void) {
-    toggle_drag_select();
-    if (is_drag_select) {
-        layer_on(L_SELECT);
-    } else {
-        layer_off(L_SELECT);
-    }
-}
-
-
-void tdr_select_mod_swap_each(tap_dance_state_t *state, void *user_data) {
+void td_select_p1_swap_hands_toggle_each(tap_dance_state_t *state, void *user_data) {
     if (state->count == 2) {
         swap_hands_toggle();
         state->finished = true;
     }
 }
 
-void tdr_select_mod_swap_finished(tap_dance_state_t *state, void *user_data) {
-    tdr_select_mod_swap_current_step = get_current_dance_step(state);
-    switch (tdr_select_mod_swap_current_step) {
+void td_select_p1_swap_hands_toggle_finished(tap_dance_state_t *state, void *user_data) {
+    td_select_p1_swap_hands_toggle_step_state = td_get_step_state(state);
+    switch (td_select_p1_swap_hands_toggle_step_state) {
         case TD_SINGLE_TAP:
-            toggle_drag_select_user();
+            toggle_drag_select();
             break;
         case TD_SINGLE_HOLD:
-            register_code(KC_LEFT_GUI);
+            register_code16(PB_1);
             break;
         default:
             break;
     }
 }
 
-void tdr_select_mod_swap_reset(tap_dance_state_t *state, void *user_data) {
-    if (tdr_select_mod_swap_current_step == TD_SINGLE_HOLD) {
-        unregister_code(KC_LEFT_GUI);
+void td_select_p1_swap_hands_toggle_reset(tap_dance_state_t *state, void *user_data) {
+    if (td_select_p1_swap_hands_toggle_step_state == TD_SINGLE_HOLD) {
+        unregister_code16(PB_1);
     }
-    tdr_select_mod_swap_current_step = TD_NONE;
+    td_select_p1_swap_hands_toggle_step_state = TD_NONE;
 }
 
-void tdr_exit_save_config_fn(tap_dance_state_t *state, void *user_data) {
-    switch (get_current_dance_step(state)) {
+void td_exit_save_config_fn(tap_dance_state_t *state, void *user_data) {
+    switch (td_get_step_state(state)) {
         // TODO: replace with exit/save functionality
         case TD_SINGLE_HOLD:
             layer_clear();

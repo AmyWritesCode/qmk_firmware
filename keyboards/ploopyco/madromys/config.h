@@ -1,4 +1,5 @@
-/* Copyright 2023 Colin Lam (Ploopy Corporation)
+/* Copyright 2026 AmyWritesCode
+ * Copyright 2023 Colin Lam (Ploopy Corporation)
  * Copyright 2020 Christopher Courtney, aka Drashna Jael're  (@drashna) <drashna@live.com>
  * Copyright 2019 Sunjun Kim
  *
@@ -32,6 +33,7 @@
 #define PLOOPY_DRAGSCROLL_SCROLLOCK
 
 #define PLOOPY_VLMSCROLL_DEBOUNCE 50
+#define PLOOPY_INACTIVE_LAYER_TIMEOUT 20000
 #define PLOOPY_CONFIRM_UPDATE_EEPROM
 
 #define UNUSABLE_PINS \

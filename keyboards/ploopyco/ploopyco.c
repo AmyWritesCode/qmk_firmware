@@ -1,4 +1,5 @@
-/* Copyright 2020 Christopher Courtney, aka Drashna Jael're  (@drashna) <drashna@live.com>
+/* Copyright 2026 AmyWritesCode
+ * Copyright 2020 Christopher Courtney, aka Drashna Jael're  (@drashna) <drashna@live.com>
  * Copyright 2019 Sunjun Kim
  * Copyright 2020 Ploopy Corporation
  *
@@ -17,11 +18,52 @@
  */
 
 #include "analog.h"
-#include "config_defaults.h"
 #include "ploopyco.h"
 #include "trackball_mode.h"
 
+/* ════════════════════ *
+ *     Declarations     *
+ * ════════════════════ */
+
+// Clear legacy configs
+#undef PLOOPY_SCROLL_DEBOUNCE
+#undef PLOOPY_SCROLL_BUTTON_DEBOUNCE
+
+#ifndef PLOOPY_DPI_OPTIONS
+#    define PLOOPY_DPI_OPTIONS \
+        { 600, 900, 1200, 1600, 2400 }
+#    ifndef PLOOPY_DPI_DEFAULT
+#        define PLOOPY_DPI_DEFAULT 1
+#    endif
+#endif
+#ifndef PLOOPY_DPI_DEFAULT
+#    define PLOOPY_DPI_DEFAULT 0
+#endif
+#ifndef PLOOPY_SCROLL_DIV_OPTIONS
+#    define PLOOPY_SCROLL_DIV_OPTIONS \
+        { 0.5, 1.0, 1.5, 2.0, 4.0 }
+#    ifndef PLOOPY_SCROLL_DIV_DEFAULT
+#        define PLOOPY_SCROLL_DIV_DEFAULT 0
+#    endif
+#endif
+#ifndef PLOOPY_SCROLL_DIV_DEFAULT
+#    define PLOOPY_SCROLL_DIV_DEFAULT 0
+#endif
+#ifndef PLOOPY_DRAGSCROLL_H_COEF
+#    define PLOOPY_DRAGSCROLL_H_COEF 1.0
+#endif
+#ifndef PLOOPY_HRSCROLL_DEBOUNCE
+#    define PLOOPY_HRSCROLL_DEBOUNCE 16
+#endif
+#ifndef PLOOPY_VLMSCROLL_DEBOUNCE
+#    define PLOOPY_VLMSCROLL_DEBOUNCE 50
+#endif
+#ifndef PLOOPY_INACTIVE_LAYER_TIMEOUT
+#    define PLOOPY_INACTIVE_LAYER_TIMEOUT 20000
+#endif
+
 keyboard_config_t keyboard_config;
+keyboard_config_t keyboard_config_saved;
 uint16_t          dpi_array[] = PLOOPY_DPI_OPTIONS;
 float             scroll_div_array[] = PLOOPY_SCROLL_DIV_OPTIONS;
 #define DPI_OPTION_SIZE ARRAY_SIZE(dpi_array)
@@ -30,28 +72,11 @@ float             scroll_div_array[] = PLOOPY_SCROLL_DIV_OPTIONS;
 // Trackball State
 float scroll_accumulated_h = 0;
 float scroll_accumulated_v = 0;
-uint32_t last_scroll_time  = 0;
+uint16_t last_scroll_time  = 0;
 
-void cycle_dpi(void) {
-    uint8_t prev_dpi = keyboard_config.dpi_config;
-    keyboard_config.dpi_config = (keyboard_config.dpi_config + 1) % DPI_OPTION_SIZE;
-#ifndef PLOOPY_CONFIRM_UPDATE_EEPROM
-    eeconfig_update_kb(keyboard_config.raw);
-#endif
-    pointing_device_set_cpi(dpi_array[keyboard_config.dpi_config]);
-    printf("DPI / Scroll Div.: %d -> %d / %d", \
-        prev_dpi, keyboard_config.dpi_config, keyboard_config.scroll_div_config);
-}
-
-void cycle_scroll_div(void) {
-    uint8_t prev_scroll_div = keyboard_config.scroll_div_config;
-    keyboard_config.scroll_div_config = (keyboard_config.scroll_div_config + 1) % SCROLL_DIV_OPTION_SIZE;
-#ifndef PLOOPY_CONFIRM_UPDATE_EEPROM
-    eeconfig_update_kb(keyboard_config.raw);
-#endif
-    printf("DPI / Scroll Div.: %d / %d -> %d", \
-        keyboard_config.dpi_config, prev_scroll_div, keyboard_config.scroll_div_config);
-}
+/* ═══════════════════════ *
+ *     Core Processing     *
+ * ═══════════════════════ */
 
 report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
     static uint16_t hires_scroll_resolution = 1;
@@ -143,44 +168,72 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
         return false;
     }
 
-    if (keycode == DRAG_SCROLL) {
-        if (record->tap.count && record->event.pressed) {
+    switch (keycode) {
+        case DRAG_SCROLL:
+#ifdef PLOOPY_DRAGSCROLL_MOMENTARY
             set_drag_scroll(record->event.pressed);
-        }
-    } else if (keycode == VOLUME_SCROLL) {
-        if (record->tap.count && record->event.pressed) {
-            set_volume_scroll(record->event.pressed);
-        }
-    } else if (record->event.pressed) {
-        switch(keycode) {
-            case DPI_CONFIG:
-                cycle_dpi();
-                break;
-            case SCROLL_DIV_CONFIG:
-                cycle_scroll_div();
-                break;
-            case HIRES_SCROLL:
-                toggle_hires_scroll();
-                break;
-            case SCROLL_SNAP_H:
-                toggle_scroll_snap_h();
-                break;
-            case SCROLL_SNAP_V:
-                toggle_scroll_snap_v();
-                break;
-            case SAVE_SCROLL_CONFIG:
-#ifdef PLOOPY_CONFIRM_UPDATE_EEPROM
-                eeconfig_update_kb(keyboard_config.raw);
+#else
+            toggle_drag_scroll();
 #endif
-                break;
-            default:
-                break;
-        }
+            break;
+        case DRAG_SELECT:
+            toggle_drag_select();
+            break;
+        case DPI_CONFIG:
+            cycle_dpi();
+            break;
+        case SCROLL_DIV_CONFIG:
+            cycle_scroll_div();
+            break;
+        case HIRES_SCROLL:
+            toggle_hires_scroll();
+            break;
+        case SCROLL_SNAP_H:
+            toggle_scroll_snap_h();
+            break;
+        case SCROLL_SNAP_V:
+            toggle_scroll_snap_v();
+            break;
+        case SAVE_SCROLL_CONFIG:
+#ifdef PLOOPY_CONFIRM_UPDATE_EEPROM
+            eeconfig_update_kb(keyboard_config.raw);
+#endif
+            break;
+        default:
+            break;
     }
     return true;
 }
 
-// Hardware Setup
+/* ═════════════════════════ *
+ *     Resolution Config     *
+ * ═════════════════════════ */
+
+void cycle_dpi(void) {
+    uint8_t prev_dpi = keyboard_config.dpi_config;
+    keyboard_config.dpi_config = (keyboard_config.dpi_config + 1) % DPI_OPTION_SIZE;
+#ifndef PLOOPY_CONFIRM_UPDATE_EEPROM
+    eeconfig_update_kb(keyboard_config.raw);
+#endif
+    pointing_device_set_cpi(dpi_array[keyboard_config.dpi_config]);
+    printf("DPI / Scroll Div.: %d -> %d / %d", \
+        prev_dpi, keyboard_config.dpi_config, keyboard_config.scroll_div_config);
+}
+
+void cycle_scroll_div(void) {
+    uint8_t prev_scroll_div = keyboard_config.scroll_div_config;
+    keyboard_config.scroll_div_config = (keyboard_config.scroll_div_config + 1) % SCROLL_DIV_OPTION_SIZE;
+#ifndef PLOOPY_CONFIRM_UPDATE_EEPROM
+    eeconfig_update_kb(keyboard_config.raw);
+#endif
+    printf("DPI / Scroll Div.: %d / %d -> %d", \
+        keyboard_config.dpi_config, prev_scroll_div, keyboard_config.scroll_div_config);
+}
+
+/* ══════════════════════ *
+ *     Hardware Setup     *
+ * ══════════════════════ */
+
 void keyboard_pre_init_kb(void) {
     // debug_enable  = true;
     // debug_matrix  = true;

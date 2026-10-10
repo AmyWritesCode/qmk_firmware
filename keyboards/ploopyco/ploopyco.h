@@ -1,4 +1,5 @@
-/* Copyright 2020 Christopher Courtney, aka Drashna Jael're  (@drashna) <drashna@live.com>
+/* Copyright 2026 AmyWritesCode
+ * Copyright 2020 Christopher Courtney, aka Drashna Jael're  (@drashna) <drashna@live.com>
  * Copyright 2019 Sunjun Kim
  * Copyright 2020 Ploopy Corporation
  *
@@ -32,10 +33,10 @@ extern keyboard_config_t keyboard_config;
 extern uint16_t          dpi_array[];
 extern float             scroll_div_array[];
 
-enum ploopy_keycodes {
-    DPI_CONFIG = SAFE_RANGE,
+enum keycodes_kb {
+    DPI_CONFIG = QK_KB_0,
     DRAG_SCROLL,
-    VOLUME_SCROLL,
+    DRAG_SELECT,
     SCROLL_DIV_CONFIG,
     HIRES_SCROLL,
     SCROLL_SNAP_V,

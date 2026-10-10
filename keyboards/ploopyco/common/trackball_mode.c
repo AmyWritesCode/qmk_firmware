@@ -1,3 +1,19 @@
+/* Copyright 2026 AmyWritesCode
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "print.h"
 #include "trackball_mode.h"
 
@@ -7,10 +23,6 @@ bool is_volume_scroll = false;
 bool is_hires_scroll  = true;
 bool is_scroll_snap_v = false;
 bool is_scroll_snap_h = false;
-
-float scroll_accumulated_h = 0;
-float scroll_accumulated_v = 0;
-uint32_t last_scroll_time  = 0;
 
 void toggle_drag_scroll(void) {
     is_drag_scroll ^= 1;
@@ -28,6 +40,19 @@ void toggle_drag_scroll(void) {
 void set_drag_scroll(bool on) {
     if (is_drag_scroll != on) {
         toggle_drag_scroll();
+    }
+}
+
+void toggle_drag_select(void) {
+    is_drag_select ^= 1;
+#ifdef CONSOLE_ENABLE
+    uprintf("Drag-select is %s\n", is_drag_scroll ? "ON" : "OFF");
+#endif
+}
+
+void set_drag_select(bool on) {
+    if (is_drag_select != on) {
+        toggle_drag_select();
     }
 }
 
