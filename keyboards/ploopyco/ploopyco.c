@@ -23,6 +23,7 @@
 #include "quantum.h"
 #include "quantum_keycodes.h"
 #include "scroll_mode.h"
+#include "timer.h"
 
 // for legacy support
 #if defined(OPT_DEBOUNCE) && !defined(PLOOPY_SCROLL_DEBOUNCE)
@@ -72,11 +73,13 @@ float             scroll_div_array[] = PLOOPY_SCROLL_DIV_OPTIONS;
 #define SCROLL_DIV_OPTION_SIZE ARRAY_SIZE(scroll_div_array)
 
 // Trackball State
-float scroll_accumulated_h       = 0;
-float scroll_accumulated_v       = 0;
-float scroll_accumulated_vlm     = 0;
-uint16_t last_scroll_time        = 0;
-uint16_t last_volume_scroll_time = 0;
+float scroll_accumulated_h         = 0;
+float scroll_accumulated_v         = 0;
+float scroll_accumulated_vlm       = 0;
+uint16_t hr_scroll_debounce_timer  = 0;
+uint16_t vlm_scroll_debounce_timer = 0;
+uint16_t drag_scroll_press_timer   = 0;
+bool pointing_device_moved         = false;
 
 void cycle_dpi(void);
 void cycle_scroll_div(void);
@@ -85,12 +88,14 @@ int16_t get_emulated_standard_scroll_distance(float hires_scroll_distance, uint1
 report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
     static uint16_t hires_scroll_resolution = 1;
 
+    pointing_device_moved = mouse_report.h || mouse_report.v;
+
     if (is_volume_scroll) {
         scroll_accumulated_h = 0;
         scroll_accumulated_v = 0;
 
-        if(timer_elapsed(last_volume_scroll_time) > PLOOPY_VLMSCROLL_DEBOUNCE) {
-            last_volume_scroll_time = timer_read32();
+        if(timer_elapsed(vlm_scroll_debounce_timer) > PLOOPY_VLMSCROLL_DEBOUNCE) {
+            vlm_scroll_debounce_timer = timer_read32();
             if ((float) mouse_report.y < 0) {
                 tap_code16(LSFT(KC_VOLU));
             } else if ((float) mouse_report.y > 0) {
@@ -120,11 +125,11 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
         }
 
 #ifdef POINTING_DEVICE_HIRES_SCROLL_ENABLE
-        if (timer_elapsed32(last_scroll_time) < PLOOPY_HRSCROLL_DEBOUNCE) {
+        if (timer_elapsed32(hr_scroll_debounce_timer) < PLOOPY_HRSCROLL_DEBOUNCE) {
             mouse_report.h = 0;
             mouse_report.v = 0;
         } else {
-            last_scroll_time = timer_read32();
+            hr_scroll_debounce_timer = timer_read32();
 
             if (is_hires_scroll) {
                 // Assign integer parts of accumulated scroll values to the mouse report
@@ -190,6 +195,17 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
             toggle_drag_scroll();
         }
 #endif
+    } else if (keycode == DRAG_SCROLL_OR_CLICK3) {
+        set_drag_scroll(record->event.pressed);
+        if (record->event.pressed) {
+            pointing_device_moved = false;
+            scroll_accumulated_h = 0;
+            scroll_accumulated_v = 0;
+            drag_scroll_press_timer = timer_read();
+        } else if (!pointing_device_moved && timer_elapsed(drag_scroll_press_timer) < TAPPING_TERM) {
+            tap_code16(MS_BTN3);
+            drag_scroll_press_timer = 0;
+        }
     } else if (record->event.pressed) {
         switch (keycode) {
             case DPI_CONFIG:

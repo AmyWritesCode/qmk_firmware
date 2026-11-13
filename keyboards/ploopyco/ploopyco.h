@@ -36,6 +36,7 @@ extern float             scroll_div_array[];
 enum ploopy_keycodes {
     DPI_CONFIG = SAFE_RANGE,
     DRAG_SCROLL,
+    DRAG_SCROLL_OR_CLICK3,
     SCROLL_DIV_CONFIG,
     HIRES_SCROLL,
     SCROLL_SNAP_V,
