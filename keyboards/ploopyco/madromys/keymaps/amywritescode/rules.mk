@@ -1,0 +1,7 @@
+LAYER_LOCK_ENABLE = yes
+SWAP_HANDS_ENABLE = yes
+TAP_DANCE_ENABLE = yes
+
+# Debugging purposes only
+CONSOLE_ENABLE = yes
+DYNAMIC_TAPPING_TERM_ENABLE = yes

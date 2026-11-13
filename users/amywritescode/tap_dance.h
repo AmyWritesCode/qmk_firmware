@@ -13,14 +13,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #pragma once
 
 #include "process_tap_dance.h"
-
-enum tap_dances {
-    TD_SEARCH_SWAPHANDS_CONFIG,
-};
-
 
 typedef enum {
     TD_NONE,
@@ -28,13 +24,10 @@ typedef enum {
     TD_SINGLE_TAP,
     TD_SINGLE_HOLD,
     TD_DOUBLE_TAP,
-    TD_DOUBLE_HOLD,         // Equivalent to: double-tap + hold on 2nd tap
-    TD_DOUBLE_SINGLE_TAP,   // Equivalent to: 2 single taps
+    TD_DOUBLE_SINGLE_TAP,
+    TD_DOUBLE_HOLD,
     TD_TRIPLE_TAP,
-    TD_TRIPLE_HOLD          // Equivalent to: triple-tap + hold on 3rd tap
-} td_outcome_t;
+    TD_TRIPLE_HOLD,
+} td_step_state_t;
 
-typedef struct {
-    bool is_press_action;
-    td_outcome_t outcome;
-} td_tap_t;
+td_step_state_t td_get_step_state(tap_dance_state_t *state);

@@ -1,9 +1,7 @@
 {
     "name": "QMK Firmware",
     "exclude_patterns": [
-        "keyboards\/(?!(spaceman|ploopyco|velocifire))",
-        "keyboards\/spaceman\/(?!2_milk)",
-        "keyboards\/ploopyco\/(mouse|nano_2|trackball)"
+        "keyboards\/(?!(ploopyco|velocifire))"
     ],
     "files": [
         {

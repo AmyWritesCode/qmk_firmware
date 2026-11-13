@@ -18,26 +18,32 @@
 
 #pragma once
 
-#define TAPPING_TOGGLE 2
-#define PLOOPY_VOLUME_SCROLL_DEBOUNCE 50
+#define LAYER_LOCK_IDLE_TIMEOUT 15000
+// #define ROTATIONAL_TRANSFORM_ANGLE 0
+#define POINTING_DEVICE_INVERT_Y
+#define PLOOPY_CONFIRM_UPDATE_EEPROM
+
+/* ═════════════════ *
+ *     Scrolling     *
+ * ═════════════════ */
+#define PLOOPY_VLMSCROLL_DEBOUNCE 32
 
 /* Hi-res scrolling */
 #define POINTING_DEVICE_HIRES_SCROLL_ENABLE
 #define POINTING_DEVICE_HIRES_SCROLL_MULTIPLIER 120
 #define WHEEL_EXTENDED_REPORT // Necessary to send wheel reports with 16-bit values to avoid overflowing
-#define PLOOPY_HIRES_SCROLL_DEBOUNCE 16
+#define PLOOPY_HRSCROLL_DEBOUNCE 16
 
-/* Drag scrolling */
-// #define PLOOPY_DRAGSCROLL_MOMENTARY
-#define PLOOPY_DRAGSCROLL_TAP_OR_HOLD
+/* Drag-scroll */
+#define PLOOPY_DRAGSCROLL_MOMENTARY
 #define PLOOPY_DRAGSCROLL_INVERT
 #define PLOOPY_DRAGSCROLL_SCROLLOCK
 
+/* ════════════════ *
+ *     Hardware     *
+ * ════════════════ */
 #define UNUSABLE_PINS \
-    { GP1, GP3, GP4, GP6, GP8, GP10, GP14, GP16, GP18, GP20, GP22, GP24, GP25, GP26, GP27, GP28, GP29 }
-
-// #define ROTATIONAL_TRANSFORM_ANGLE 0
-#define POINTING_DEVICE_INVERT_Y
+{ GP1, GP3, GP4, GP6, GP8, GP10, GP14, GP16, GP18, GP20, GP22, GP24, GP25, GP26, GP27, GP28, GP29 }
 
 /* PMW3360 Settings */
 #define PMW33XX_LIFTOFF_DISTANCE 0x00

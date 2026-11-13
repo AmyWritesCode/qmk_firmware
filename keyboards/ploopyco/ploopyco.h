@@ -25,6 +25,7 @@ typedef union {
     struct {
         uint8_t dpi_config;
         uint8_t scroll_div_config;
+        uint8_t vlm_scroll_div_config;
     };
 } keyboard_config_t;
 
@@ -35,12 +36,12 @@ extern float             scroll_div_array[];
 enum ploopy_keycodes {
     DPI_CONFIG = SAFE_RANGE,
     DRAG_SCROLL,
-    /* Replaced with dedicated media layer */
-    // VOLUME_SCROLL,
     SCROLL_DIV_CONFIG,
     HIRES_SCROLL,
     SCROLL_SNAP_V,
     SCROLL_SNAP_H,
+    VLM_SCROLL_DIV_CONFIG,
+    SAVE_SCROLL_CONFIG,
 };
 
 bool encoder_update_user(uint8_t index, bool clockwise);
