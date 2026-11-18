@@ -18,10 +18,11 @@
 
 #pragma once
 
-#define LAYER_LOCK_IDLE_TIMEOUT 15000
+#define LAYER_LOCK_IDLE_TIMEOUT 20000
 // #define ROTATIONAL_TRANSFORM_ANGLE 0
 #define POINTING_DEVICE_INVERT_Y
-#define PLOOPY_CONFIRM_UPDATE_EEPROM
+#define PLOOPY_MANUALLY_SAVE_CONFIG
+#define TAPPING_TERM_PER_KEY
 
 /* ═════════════════ *
  *     Scrolling     *

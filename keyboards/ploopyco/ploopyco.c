@@ -17,13 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "debug.h"
 #include "ploopyco.h"
-#include "keycodes.h"
 #include "quantum.h"
-#include "quantum_keycodes.h"
+#include "report.h"
 #include "scroll_mode.h"
-#include "timer.h"
 
 // for legacy support
 #if defined(OPT_DEBOUNCE) && !defined(PLOOPY_SCROLL_DEBOUNCE)
@@ -79,16 +76,18 @@ float scroll_accumulated_vlm       = 0;
 uint16_t hr_scroll_debounce_timer  = 0;
 uint16_t vlm_scroll_debounce_timer = 0;
 uint16_t drag_scroll_press_timer   = 0;
-bool pointing_device_moved         = false;
+bool mouse_moved                   = false;
 
 void cycle_dpi(void);
 void cycle_scroll_div(void);
 int16_t get_emulated_standard_scroll_distance(float hires_scroll_distance, uint16_t resolution);
+report_mouse_t process_historical_auto_snap(report_mouse_t mouse_report);
 
 report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
-    static uint16_t hires_scroll_resolution = 1;
+    mouse_report = pointing_device_task_user(mouse_report);
 
-    pointing_device_moved = mouse_report.h || mouse_report.v;
+    static uint16_t hires_scroll_resolution = 1;
+    mouse_moved = mouse_report.h != 0 || mouse_report.v != 0;
 
     if (is_volume_scroll) {
         scroll_accumulated_h = 0;
@@ -147,12 +146,13 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
                 // Emulate no hires scrolling by only reporting in increments of the resolution
                 hires_scroll_resolution = pointing_device_get_hires_scroll_resolution();
                 mouse_report.h = get_emulated_standard_scroll_distance(scroll_accumulated_h, hires_scroll_resolution);
-#ifdef PLOOPY_DRAGSCROLL_INVERT
+    #ifdef PLOOPY_DRAGSCROLL_INVERT
                 mouse_report.v = -get_emulated_standard_scroll_distance(scroll_accumulated_v, hires_scroll_resolution);
-#else
+                scroll_accumulated_v += mouse_report.v;
+    #else
                 mouse_report.v = get_emulated_standard_scroll_distance(scroll_accumulated_v, hires_scroll_resolution);
-#endif
                 scroll_accumulated_v -= mouse_report.v;
+    #endif
                 scroll_accumulated_h -= mouse_report.h;
             }
         }
@@ -160,12 +160,13 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
             mouse_report.h = (int8_t)scroll_accumulated_h;
     #ifdef PLOOPY_DRAGSCROLL_INVERT
             mouse_report.v = -(int8_t)scroll_accumulated_v;
+            scroll_accumulated_v += (int8_t)scroll_accumulated_v;
     #else
             mouse_report.v = (int8_t)scroll_accumulated_v;
+            scroll_accumulated_v -= (int8_t)scroll_accumulated_v;
     #endif
             // Update accumulated scroll values by subtracting the integer parts
             scroll_accumulated_h -= (int8_t)scroll_accumulated_h;
-            scroll_accumulated_v -= (int8_t)scroll_accumulated_v;
 #endif
 
         // Clear the X and Y values of the mouse report
@@ -173,7 +174,7 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
         mouse_report.y = 0;
     }
 
-    return pointing_device_task_user(mouse_report);
+    return mouse_report;
 }
 
 bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
@@ -198,11 +199,11 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
     } else if (keycode == DRAG_SCROLL_OR_CLICK3) {
         set_drag_scroll(record->event.pressed);
         if (record->event.pressed) {
-            pointing_device_moved = false;
+            mouse_moved = false;
             scroll_accumulated_h = 0;
             scroll_accumulated_v = 0;
             drag_scroll_press_timer = timer_read();
-        } else if (!pointing_device_moved && timer_elapsed(drag_scroll_press_timer) < TAPPING_TERM) {
+        } else if (!mouse_moved && timer_elapsed(drag_scroll_press_timer) < TAPPING_TERM) {
             tap_code16(MS_BTN3);
             drag_scroll_press_timer = 0;
         }
@@ -223,10 +224,15 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
             case SCROLL_SNAP_V:
                 toggle_scroll_snap_v();
                 break;
-            case SAVE_SCROLL_CONFIG:
-#ifdef PLOOPY_CONFIRM_UPDATE_EEPROM
+            case SCROLL_SNAP_OFF:
+                set_scroll_snap_off();
+                break;
+            case SAVE_CONFIG:
+#ifdef PLOOPY_MANUALLY_SAVE_CONFIG
                 //eeconfig_update_kb(keyboard_config.raw);
-                print("Settings saved to EEPROM");
+                if (debug_mouse) {
+                    dprint("Settings saved to EEPROM\n");
+                }
 #endif
                 break;
             default:
@@ -247,22 +253,34 @@ int16_t get_emulated_standard_scroll_distance(float hires_scroll_distance, uint1
 void cycle_dpi(void) {
     uint8_t prev_config = keyboard_config.dpi_config;
     keyboard_config.dpi_config = (keyboard_config.dpi_config + 1) % DPI_OPTION_SIZE;
-#ifndef PLOOPY_CONFIRM_UPDATE_EEPROM
+#ifndef PLOOPY_MANUALLY_SAVE_CONFIG
     eeconfig_update_kb(keyboard_config.raw);
 #endif
     pointing_device_set_cpi(dpi_array[keyboard_config.dpi_config]);
-    printf("DPI=%u->%u, SD=%f", \
-        dpi_array[prev_config], dpi_array[keyboard_config.dpi_config], scroll_div_array[keyboard_config.scroll_div_config]);
+    if (debug_mouse) {
+        dprintf("dpi=%u->%u (%u->%u), resolution=%u\n",
+            dpi_array[prev_config],
+            dpi_array[keyboard_config.dpi_config],
+            prev_config, keyboard_config.dpi_config,
+            pointing_device_get_hires_scroll_resolution()
+        );
+
+    }
 }
 
 void cycle_scroll_div(void) {
     uint8_t prev_config = keyboard_config.scroll_div_config;
     keyboard_config.scroll_div_config = (keyboard_config.scroll_div_config + 1) % SCROLL_DIV_OPTION_SIZE;
-#ifndef PLOOPY_CONFIRM_UPDATE_EEPROM
+#ifndef PLOOPY_MANUALLY_SAVE_CONFIG
     eeconfig_update_kb(keyboard_config.raw);
 #endif
-    printf("DPI=%u, SD=%f->%f\n", \
-        dpi_array[keyboard_config.dpi_config], scroll_div_array[prev_config], scroll_div_array[keyboard_config.scroll_div_config]);
+    if (debug_mouse) {
+        dprintf("scroll-div=%.1f->%.1f (%u->%u)\n",
+                scroll_div_array[prev_config],
+                scroll_div_array[keyboard_config.scroll_div_config],
+                prev_config, keyboard_config.scroll_div_config
+        );
+    }
 }
 
 /* ══════════════════════ *

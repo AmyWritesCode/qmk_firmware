@@ -25,7 +25,6 @@ typedef union {
     struct {
         uint8_t dpi_config;
         uint8_t scroll_div_config;
-        uint8_t vlm_scroll_div_config;
     };
 } keyboard_config_t;
 
@@ -41,8 +40,9 @@ enum ploopy_keycodes {
     HIRES_SCROLL,
     SCROLL_SNAP_V,
     SCROLL_SNAP_H,
+    SCROLL_SNAP_OFF,
     VLM_SCROLL_DIV_CONFIG,
-    SAVE_SCROLL_CONFIG,
+    SAVE_CONFIG,
 };
 
 bool encoder_update_user(uint8_t index, bool clockwise);

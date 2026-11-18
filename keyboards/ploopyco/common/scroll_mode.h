@@ -30,5 +30,6 @@ void set_drag_scroll(bool on);
 void toggle_hires_scroll(void);
 void toggle_scroll_snap_h(void);
 void toggle_scroll_snap_v(void);
+void set_scroll_snap_off(void);
 void set_volume_scroll(bool on);
 void toggle_volume_scroll(void);

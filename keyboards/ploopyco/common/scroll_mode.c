@@ -18,7 +18,6 @@
 #include "scroll_mode.h"
 
 bool is_drag_scroll        = false;
-bool is_drag_scroll_locked = false;
 bool is_hires_scroll       = true;
 bool is_scroll_snap_v      = false;
 bool is_scroll_snap_h      = false;
@@ -50,10 +49,7 @@ void toggle_scroll_snap_h(void) {
         dprintf("Horizontal snap is %s\n", is_scroll_snap_h ? "ON" : "OFF");
     }
     if (is_scroll_snap_h && is_scroll_snap_v) {
-        is_scroll_snap_v = false;
-        if (debug_mouse) {
-            dprintf("Vertical snap is OFF\n");
-        }
+        toggle_scroll_snap_v();
     }
 }
 
@@ -62,11 +58,8 @@ void toggle_scroll_snap_v(void) {
     if (debug_mouse) {
         dprintf("Vertical snap is %s\n", is_scroll_snap_v ? "ON" : "OFF");
     }
-    if (is_scroll_snap_v && is_scroll_snap_h) {
-        is_scroll_snap_h = false;
-        if (debug_mouse) {
-            dprintf("Horizontal snap is OFF\n");
-        }
+    if (is_scroll_snap_h && is_scroll_snap_h) {
+        toggle_scroll_snap_h();
     }
 }
 
@@ -79,6 +72,16 @@ void set_volume_scroll(bool on) {
     }
 }
 
+void set_scroll_snap_off(void) {
+    if (is_scroll_snap_h) {
+        toggle_scroll_snap_h();
+    }
+    if (is_scroll_snap_v) {
+        toggle_scroll_snap_v();
+    }
+}
+
 void toggle_volume_scroll(void) {
     set_volume_scroll(!is_volume_scroll);
 }
+
