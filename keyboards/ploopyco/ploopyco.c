@@ -179,10 +179,17 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
 
 bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
     if (debug_mouse) {
-        dprintf("KL: kc=0x%04X, row/col=%2u/%2u, pressed=%u, int=%u, count=%u\n", \
-            keycode, record->event.key.row, record->event.key.col, \
-            record->event.pressed, record->tap.interrupted, record->tap.count \
+    #ifdef KEYCODE_STRING_ENABLE
+        dprintf("KL: kc=0x%04X, kcs=%s, row/col=%2u/%2u, pressed=%u, int=%u, count=%u\n",
+            keycode, get_keycode_string(keycode), record->event.key.row, record->event.key.col,
+            record->event.pressed, record->tap.interrupted, record->tap.count
         );
+    #else
+        dprintf("KL: kc=0x%04X, row/col=%2u/%2u, pressed=%u, int=%u, count=%u\n",
+            keycode, record->event.key.row, record->event.key.col,
+            record->event.pressed, record->tap.interrupted, record->tap.count
+        );
+    #endif
     }
 
     if (!process_record_user(keycode, record)) {

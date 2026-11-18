@@ -22,20 +22,12 @@
 /* ════════════════════ *
  *     Declarations     *
  * ════════════════════ */
-enum td_keycodes_user {
-    PLAY_PAUSE_MEDIA_TOGGLE,
-    HYPR_MACROS,
-    MEH_MACROS_SWAP_HANDS,
-    SCROLL_SNAP_TOGGLE,
-    CONFIG_ON,
-    EXIT_OR_SAVE_CONFIG,
-};
 
 // Layers
 #define FOR_LAYERS(X) \
-    X(L_BASE) \
-    X(L_SCROLL) \
-    X(L_MEDIA) \
+    X(L_BASE)         \
+    X(L_SCROLL)       \
+    X(L_MEDIA)        \
     X(L_CONFIG)
 
 typedef enum {
@@ -51,19 +43,28 @@ static char * layer_names[] = {
 };
 
 // Tap-dances
+enum td_keycodes_user {
+    PLAY_PAUSE_MEDIA_TOGGLE,
+    HYPR_MACROS,
+    MEH_MACROS_SWAP_HANDS,
+    SCROLL_SNAP_TOGGLE,
+    CONFIG_ON,
+    EXIT_OR_SAVE_CONFIG,
+};
+
 td_step_state_t td_play_pause_media_toggle_state = TD_NONE;
-td_step_state_t td_scroll_snap_toggle_state = TD_NONE;
 td_step_state_t td_hypr_macros_state = TD_NONE;
 td_step_state_t td_meh_macros_swap_hands_state = TD_NONE;
+td_step_state_t td_scroll_snap_toggle_state = TD_NONE;
 td_step_state_t td_exit_or_save_config_state = TD_NONE;
 
 void td_play_pause_media_toggle_finished(tap_dance_state_t *state, void *user_data);
 void td_play_pause_media_toggle_reset(tap_dance_state_t *state, void *user_data);
 void td_hypr_macros_finished(tap_dance_state_t *state, void *user_data);
 void td_hypr_macros_reset(tap_dance_state_t *state, void *user_data);
-void td_scroll_snap_toggle_finished(tap_dance_state_t *state, void *user_data);
 void td_meh_macros_swap_hands_finished(tap_dance_state_t *state, void *user_data);
 void td_meh_macros_swap_hands_reset(tap_dance_state_t *state, void *user_data);
+void td_scroll_snap_toggle_finished(tap_dance_state_t *state, void *user_data);
 void td_config_on_finished(tap_dance_state_t *state, void *user_data);
 void td_exit_or_save_config_finished(tap_dance_state_t *state, void *user_data);
 void td_exit_or_save_config_reset(tap_dance_state_t *state, void *user_data);
@@ -71,8 +72,8 @@ void td_exit_or_save_config_reset(tap_dance_state_t *state, void *user_data);
 tap_dance_action_t tap_dance_actions[] = {
     [PLAY_PAUSE_MEDIA_TOGGLE] = ACTION_TAP_DANCE_FN_ADVANCED(NULL, td_play_pause_media_toggle_finished, td_play_pause_media_toggle_reset),
     [HYPR_MACROS] = ACTION_TAP_DANCE_FN_ADVANCED(NULL, td_hypr_macros_finished, td_hypr_macros_reset),
-    [SCROLL_SNAP_TOGGLE] = ACTION_TAP_DANCE_FN(td_scroll_snap_toggle_finished),
     [MEH_MACROS_SWAP_HANDS] = ACTION_TAP_DANCE_FN_ADVANCED(NULL, td_meh_macros_swap_hands_finished, td_meh_macros_swap_hands_reset),
+    [SCROLL_SNAP_TOGGLE] = ACTION_TAP_DANCE_FN(td_scroll_snap_toggle_finished),
     [CONFIG_ON] = ACTION_TAP_DANCE_FN(td_config_on_finished),
     [EXIT_OR_SAVE_CONFIG] = ACTION_TAP_DANCE_FN_ADVANCED(NULL, td_exit_or_save_config_finished, td_exit_or_save_config_reset),
 };
@@ -92,7 +93,6 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         TD(HYPR_MACROS),    TD(PLAY_PAUSE_MEDIA_TOGGLE),    DRAG_SCROLL_OR_CLICK3,  MS_BTN2,
         MS_BTN1,                                                                    TD(MEH_MACROS_SWAP_HANDS)
     ),
-
     [L_MEDIA] = LAYOUT(
         KC_MNXT,    _______,   KC_MUTE, KC_MEDIA_FAST_FORWARD,
         KC_MPRV,                        KC_MEDIA_REWIND
@@ -125,14 +125,14 @@ uint16_t get_tapping_term(uint16_t keycode, keyrecord_t *record) {
 void keyboard_post_init_user(void) {
     debug_enable=true;
     // debug_matrix=true;
-    //debug_keyboard=true;
+    // debug_keyboard=true;
     debug_mouse=true;
 }
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     switch (keycode) {
         case DRAG_SCROLL:
-            if (is_layer_locked(L_CONFIG)) {
+            if (!is_layer_locked(L_CONFIG)) {
                 if (record->event.pressed) {
                     layer_on(L_SCROLL);
                 } else {
@@ -247,23 +247,6 @@ void td_hypr_macros_reset(tap_dance_state_t *state, void *user_data) {
     td_hypr_macros_state = TD_NONE;
 }
 
-void td_scroll_snap_toggle_finished(tap_dance_state_t *state, void *user_data) {
-    switch (td_get_step_state(state)) {
-        case TD_SINGLE_TAP:
-            toggle_scroll_snap_v();
-            break;
-        case TD_SINGLE_HOLD:
-            set_scroll_snap_off();
-            break;
-        case TD_DOUBLE_TAP:
-            toggle_scroll_snap_h();
-            break;
-        default:
-            break;
-    }
-    reset_tap_dance(state);
-}
-
 void td_meh_macros_swap_hands_finished(tap_dance_state_t *state, void *user_data) {
     td_meh_macros_swap_hands_state = td_get_step_state(state);
     switch (td_meh_macros_swap_hands_state) {
@@ -304,6 +287,23 @@ void td_meh_macros_swap_hands_reset(tap_dance_state_t *state, void *user_data) {
     td_meh_macros_swap_hands_state = TD_NONE;
 }
 
+void td_scroll_snap_toggle_finished(tap_dance_state_t *state, void *user_data) {
+    switch (td_get_step_state(state)) {
+        case TD_SINGLE_TAP:
+            toggle_scroll_snap_v();
+            break;
+        case TD_SINGLE_HOLD:
+            set_scroll_snap_off();
+            break;
+        case TD_DOUBLE_TAP:
+            toggle_scroll_snap_h();
+            break;
+        default:
+            break;
+    }
+    reset_tap_dance(state);
+}
+
 void td_config_on_finished(tap_dance_state_t *state, void *user_data) {
     if (td_get_step_state(state) == TD_SINGLE_HOLD) {
         layer_lock_on(L_CONFIG);
@@ -339,13 +339,6 @@ void td_exit_or_save_config_finished(tap_dance_state_t *state, void *user_data) 
             break;
         case TD_SINGLE_HOLD:
             register_code16(SAVE_CONFIG);
-            if (layer_state_is(L_CONFIG)) {
-                if (is_layer_locked(L_CONFIG)) {
-                    layer_lock_invert(L_CONFIG);
-                } else {
-                    layer_off(L_CONFIG);
-                }
-            }
             layer_lock_off(L_CONFIG);
             break;
         default:

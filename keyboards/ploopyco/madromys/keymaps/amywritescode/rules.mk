@@ -4,3 +4,4 @@ TAP_DANCE_ENABLE = yes
 
 # Debugging purposes only
 CONSOLE_ENABLE = yes
+KEYCODE_STRING_ENABLE = yes
