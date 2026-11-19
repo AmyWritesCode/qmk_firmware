@@ -1,6 +1,0 @@
-{
-    "modules": [
-        "drashna/pointing_device_accel",
-        "drashna/pointing_device_gestures"
-    ]
-}
