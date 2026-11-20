@@ -20,7 +20,7 @@
 #include "ploopyco.h"
 #include "quantum.h"
 #include "report.h"
-#include "scroll_mode.h"
+#include "trackball.h"
 
 // for legacy support
 #if defined(OPT_DEBOUNCE) && !defined(PLOOPY_SCROLL_DEBOUNCE)
@@ -59,8 +59,11 @@
 #ifndef PLOOPY_HRSCROLL_DEBOUNCE
 #    define PLOOPY_HRSCROLL_DEBOUNCE 16
 #endif
-#ifndef PLOOPY_INACTIVE_LAYER_TIMEOUT
-#    define PLOOPY_INACTIVE_LAYER_TIMEOUT 20000
+#ifndef PLOOPY_DRAGSCROLL_AUTOSNAP_ON_THRESHOLD
+#    define PLOOPY_DRAGSCROLL_AUTOSNAP_ON_THRESHOLD 10
+#endif
+#ifndef PLOOPY_DRAGSCROLL_AUTOSNAP_OFF_THRESHOLD
+#    define PLOOPY_DRAGSCROLL_AUTOSNAP_OFF_THRESHOLD 30
 #endif
 
 keyboard_config_t keyboard_config;
@@ -69,14 +72,22 @@ float             scroll_div_array[] = PLOOPY_SCROLL_DIV_OPTIONS;
 #define DPI_OPTION_SIZE ARRAY_SIZE(dpi_array)
 #define SCROLL_DIV_OPTION_SIZE ARRAY_SIZE(scroll_div_array)
 
-// Trackball State
+float delta_scroll_h               = 0;
+float delta_scroll_v               = 0;
 float scroll_accumulated_h         = 0;
 float scroll_accumulated_v         = 0;
+// Speculated accumulated horizontal scroll distance before auto-snapping is applied
+int16_t scroll_spec_accumulated_h    = 0;
+// Speculated accumulated vertical scroll distance before auto-snapping is applied
+int16_t scroll_spec_accumulated_v    = 0;
 float scroll_accumulated_vlm       = 0;
 uint16_t hr_scroll_debounce_timer  = 0;
 uint16_t vlm_scroll_debounce_timer = 0;
 uint16_t drag_scroll_press_timer   = 0;
 bool mouse_moved                   = false;
+bool block_scroll_snap_auto = false;
+bool is_scroll_snap_auto_h = false;
+bool is_scroll_snap_auto_v  = false;
 
 void cycle_dpi(void);
 void cycle_scroll_div(void);
@@ -110,17 +121,49 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
         || host_keyboard_led_state().scroll_lock
 #endif
     ) {
-        // Based on: https://github.com/adept-hires-scroll-mod/qmk_firmware
-        if (is_scroll_snap_v) {
-            scroll_accumulated_h = 0;
-        } else {
-            scroll_accumulated_h += (float)mouse_report.x / scroll_div_array[keyboard_config.scroll_div_config] * PLOOPY_DRAGSCROLL_H_COEF;
+        delta_scroll_h = (float)mouse_report.x / scroll_div_array[keyboard_config.scroll_div_config] * PLOOPY_DRAGSCROLL_H_COEF;
+        delta_scroll_v = (float)mouse_report.y / scroll_div_array[keyboard_config.scroll_div_config];
+
+        if (is_scroll_snap_auto) {
+            // Based on: https://github.com/iamntz/ploopyx
+            scroll_spec_accumulated_h = (int16_t)scroll_accumulated_h + (int16_t)delta_scroll_h;
+            scroll_spec_accumulated_v = (int16_t)scroll_accumulated_v + (int16_t)delta_scroll_v;
+
+            block_scroll_snap_auto = block_scroll_snap_auto
+                || (abs(scroll_spec_accumulated_h) > PLOOPY_DRAGSCROLL_AUTOSNAP_OFF_THRESHOLD)
+                || (abs(scroll_spec_accumulated_v) > PLOOPY_DRAGSCROLL_AUTOSNAP_OFF_THRESHOLD);
+
+            if (block_scroll_snap_auto) {
+                is_scroll_snap_auto_h = false;
+                is_scroll_snap_auto_v = false;
+            } else if (!is_scroll_snap_auto_h && !is_scroll_snap_auto_v) {
+                if (scroll_spec_accumulated_h > scroll_spec_accumulated_v
+                    && abs((int16_t)scroll_spec_accumulated_h) > PLOOPY_DRAGSCROLL_AUTOSNAP_ON_THRESHOLD
+                ) {
+                    is_scroll_snap_auto_h = true;
+                    if (debug_mouse) {
+                        dprint("Horizontal auto-snap is ON\n");
+                    }
+                } else if (abs((int16_t)scroll_spec_accumulated_v) > PLOOPY_DRAGSCROLL_AUTOSNAP_ON_THRESHOLD) {
+                    is_scroll_snap_auto_v = true;
+                    if (debug_mouse) {
+                        dprint("Vertical auto-snap is ON\n");
+                    }
+                }
+            }
         }
 
-        if (is_scroll_snap_h) {
+        // Based on: https://github.com/adept-hires-scroll-mod/qmk_firmware
+        if (is_scroll_snap_v || is_scroll_snap_auto_v) {
+            scroll_accumulated_h = 0;
+        } else {
+            scroll_accumulated_h += delta_scroll_h;
+        }
+
+        if (is_scroll_snap_h || is_scroll_snap_auto_h) {
             scroll_accumulated_v = 0;
         } else {
-            scroll_accumulated_v += (float)mouse_report.y / scroll_div_array[keyboard_config.scroll_div_config];
+            scroll_accumulated_v += delta_scroll_v;
         }
 
 #ifdef POINTING_DEVICE_HIRES_SCROLL_ENABLE
@@ -209,6 +252,11 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
             mouse_moved = false;
             scroll_accumulated_h = 0;
             scroll_accumulated_v = 0;
+            delta_scroll_h = 0;
+            delta_scroll_v = 0;
+            is_scroll_snap_auto_h = false;
+            is_scroll_snap_auto_v = false;
+            block_scroll_snap_auto = false;
             drag_scroll_press_timer = timer_read();
         } else if (!mouse_moved && timer_elapsed(drag_scroll_press_timer) < TAPPING_TERM) {
             tap_code16(MS_BTN3);
@@ -249,9 +297,11 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
     return true;
 }
 
+#ifndef DOXYGEN_SUPPRESS
 /* ═════════════════════════ *
  *     Resolution Config     *
  * ═════════════════════════ */
+#endif
 
 int16_t get_emulated_standard_scroll_distance(float hires_scroll_distance, uint16_t resolution) {
     return ((int16_t)(hires_scroll_distance / resolution)) * resolution;
@@ -290,9 +340,12 @@ void cycle_scroll_div(void) {
     }
 }
 
+
+#ifndef DOXYGEN_SUPPRESS
 /* ══════════════════════ *
  *     Hardware Setup     *
  * ══════════════════════ */
+#endif
 
 void keyboard_pre_init_kb(void) {
     // debug_enable  = true;

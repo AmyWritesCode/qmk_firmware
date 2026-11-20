@@ -16,7 +16,7 @@
 #include QMK_KEYBOARD_H
 #include "process_tap_dance.h"
 #include "ploopyco.h"
-#include "scroll_mode.h"
+#include "trackball.h"
 #include "tap_dance.h"
 
 /* ════════════════════ *
@@ -82,12 +82,15 @@ const keypos_t PROGMEM hand_swap_config[MATRIX_ROWS][MATRIX_COLS] = {
     {{5, 0}, {4, 0}, {3, 0}, {2, 0}, {1, 0}, {0, 0}},
 };
 
+#ifndef DOXYGEN_SUPPRESS
 /*
  * Layer flow:
  * L_BASE <──┬───> L_MEDIA
  *    ʌ      └───> L_SCROLL ────┐
  *    └─────────── L_CONFIG <───┘
  */
+#endif
+
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [L_BASE] = LAYOUT(
         TD(HYPR_MACROS),    TD(PLAY_PAUSE_MEDIA_TOGGLE),    DRAG_SCROLL_OR_CLICK3,  MS_BTN2,
@@ -107,9 +110,12 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     ),
 };
 
+#ifndef DOXYGEN_SUPPRESS
 /* ═══════════════════════ *
  *     Core Processing     *
  * ═══════════════════════ */
+#endif
+
 uint16_t get_tapping_term(uint16_t keycode, keyrecord_t *record) {
     switch (keycode) {
         case TD(CONFIG_ON):
@@ -169,9 +175,12 @@ layer_state_t layer_state_set_user(layer_state_t state) {
     return state;
 }
 
+#ifndef DOXYGEN_SUPPRESS
 /* ═════════════════ *
  *     Tap-dance     *
  * ═════════════════ */
+#endif
+
 void td_play_pause_media_toggle_finished(tap_dance_state_t *state, void *user_data) {
     td_play_pause_media_toggle_state = td_get_step_state(state);
     switch (td_play_pause_media_toggle_state) {

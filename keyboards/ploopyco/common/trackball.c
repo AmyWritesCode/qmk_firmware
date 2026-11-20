@@ -15,72 +15,19 @@
  */
 
 #include "debug.h"
-#include "scroll_mode.h"
+#include "trackball.h"
 
 bool is_hires_scroll       = true;
+bool is_volume_scroll      = false;
 bool is_drag_scroll        = false;
 bool is_scroll_snap_h      = false;
 bool is_scroll_snap_v      = false;
-bool is_volume_scroll      = false;
+bool is_scroll_snap_auto   = true;
 
 void toggle_hires_scroll(void) {
     is_hires_scroll ^= 1;
     if (debug_mouse) {
         dprintf("Hi-res scrolling is %s\n", is_hires_scroll ? "ON" : "OFF");
-    }
-}
-
-void set_drag_scroll(bool on) {
-    if (is_drag_scroll != on) {
-        is_drag_scroll = on;
-        if (debug_mouse) {
-            dprintf("Drag-scrolling is %s\n", is_drag_scroll ? "ON" : "OFF");
-        }
-    }
-}
-
-void toggle_drag_scroll(void) {
-    set_drag_scroll(!is_drag_scroll);
-}
-
-void toggle_scroll_snap_h(void) {
-    set_scroll_snap_h(!is_scroll_snap_h);
-}
-
-void set_scroll_snap_h(bool on) {
-    if (is_scroll_snap_h != on) {
-        is_scroll_snap_h = on;
-        if (debug_mouse) {
-            dprintf("Horizontal snap is %s\n", is_scroll_snap_h ? "ON" : "OFF");
-        }
-        if (is_scroll_snap_h) {
-            set_scroll_snap_v(false);
-        }
-    }
-}
-
-void toggle_scroll_snap_v(void) {
-    set_scroll_snap_v(!is_scroll_snap_v);
-}
-
-void set_scroll_snap_v(bool on) {
-    if (is_scroll_snap_v != on) {
-        is_scroll_snap_v = on;
-        if (debug_mouse) {
-            dprintf("Vertical snap is %s\n", is_scroll_snap_v ? "ON" : "OFF");
-        }
-        if (is_scroll_snap_v) {
-            set_scroll_snap_h(false);
-        }
-    }
-}
-
-void set_scroll_snap_off(void) {
-    if (is_scroll_snap_h) {
-        toggle_scroll_snap_h();
-    }
-    if (is_scroll_snap_v) {
-        toggle_scroll_snap_v();
     }
 }
 
@@ -97,3 +44,66 @@ void toggle_volume_scroll(void) {
     set_volume_scroll(!is_volume_scroll);
 }
 
+void set_drag_scroll(bool on) {
+    if (is_drag_scroll != on) {
+        is_drag_scroll = on;
+        if (debug_mouse) {
+            dprintf("Drag-scrolling is %s\n", is_drag_scroll ? "ON" : "OFF");
+        }
+    }
+}
+
+void toggle_drag_scroll(void) {
+    set_drag_scroll(!is_drag_scroll);
+}
+
+void set_scroll_snap_h(bool on) {
+    if (is_scroll_snap_h != on) {
+        is_scroll_snap_h = on;
+        if (debug_mouse) {
+            dprintf("Horizontal snap is %s\n", is_scroll_snap_h ? "ON" : "OFF");
+        }
+        if (is_scroll_snap_h) {
+            set_scroll_snap_v(false);
+            set_scroll_snap_auto(false);
+        }
+    }
+}
+
+void toggle_scroll_snap_h(void) {
+    set_scroll_snap_h(!is_scroll_snap_h);
+}
+
+void toggle_scroll_snap_v(void) {
+    set_scroll_snap_v(!is_scroll_snap_v);
+}
+
+void set_scroll_snap_v(bool on) {
+    if (is_scroll_snap_v != on) {
+        is_scroll_snap_v = on;
+        if (debug_mouse) {
+            dprintf("Vertical snap is %s\n", is_scroll_snap_v ? "ON" : "OFF");
+        }
+        if (is_scroll_snap_v) {
+            set_scroll_snap_h(false);
+            set_scroll_snap_auto(false);
+        }
+    }
+}
+
+void set_scroll_snap_auto(bool on) {
+    if (is_scroll_snap_auto != on) {
+        is_scroll_snap_auto = on;
+        if (debug_mouse) {
+            dprintf("Auto scroll snap is %s\n", is_scroll_snap_auto ? "ON" : "OFF");
+        }
+        if (is_scroll_snap_auto) {
+            set_scroll_snap_h(false);
+            set_scroll_snap_v(false);
+        }
+    }
+}
+
+void toggle_scroll_snap_auto(void) {
+    set_scroll_snap_auto(!is_scroll_snap_auto);
+}
