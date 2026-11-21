@@ -18,8 +18,12 @@
  */
 
 #include "ploopyco.h"
+#include <stdint.h>
+#include "debug.h"
+#include "host.h"
 #include "quantum.h"
 #include "report.h"
+#include "timer.h"
 #include "trackball.h"
 
 // for legacy support
@@ -59,12 +63,6 @@
 #ifndef PLOOPY_HRSCROLL_DEBOUNCE
 #    define PLOOPY_HRSCROLL_DEBOUNCE 16
 #endif
-#ifndef PLOOPY_DRAGSCROLL_AUTOSNAP_ON_THRESHOLD
-#    define PLOOPY_DRAGSCROLL_AUTOSNAP_ON_THRESHOLD 10
-#endif
-#ifndef PLOOPY_DRAGSCROLL_AUTOSNAP_OFF_THRESHOLD
-#    define PLOOPY_DRAGSCROLL_AUTOSNAP_OFF_THRESHOLD 30
-#endif
 
 keyboard_config_t keyboard_config;
 uint16_t          dpi_array[] = PLOOPY_DPI_OPTIONS;
@@ -72,33 +70,25 @@ float             scroll_div_array[] = PLOOPY_SCROLL_DIV_OPTIONS;
 #define DPI_OPTION_SIZE ARRAY_SIZE(dpi_array)
 #define SCROLL_DIV_OPTION_SIZE ARRAY_SIZE(scroll_div_array)
 
-float delta_scroll_h               = 0;
-float delta_scroll_v               = 0;
 float scroll_accumulated_h         = 0;
 float scroll_accumulated_v         = 0;
-// Speculated accumulated horizontal scroll distance before auto-snapping is applied
-int16_t scroll_spec_accumulated_h    = 0;
-// Speculated accumulated vertical scroll distance before auto-snapping is applied
-int16_t scroll_spec_accumulated_v    = 0;
 float scroll_accumulated_vlm       = 0;
 uint16_t hr_scroll_debounce_timer  = 0;
 uint16_t vlm_scroll_debounce_timer = 0;
 uint16_t drag_scroll_press_timer   = 0;
 bool mouse_moved                   = false;
-bool block_scroll_snap_auto = false;
-bool is_scroll_snap_auto_h = false;
-bool is_scroll_snap_auto_v  = false;
 
 void cycle_dpi(void);
 void cycle_scroll_div(void);
 int16_t get_emulated_standard_scroll_distance(float hires_scroll_distance, uint16_t resolution);
-report_mouse_t process_historical_auto_snap(report_mouse_t mouse_report);
 
 report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
-    mouse_report = pointing_device_task_user(mouse_report);
-
     static uint16_t hires_scroll_resolution = 1;
-    mouse_moved = mouse_report.h != 0 || mouse_report.v != 0;
+    static float scroll_delta_h = 0;
+    static float scroll_delta_v = 0;
+    static uint16_t scroll_delta_t = 0;
+
+    mouse_moved = mouse_report.x != 0 || mouse_report.y != 0;
 
     if (is_volume_scroll) {
         scroll_accumulated_h = 0;
@@ -121,57 +111,30 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
         || host_keyboard_led_state().scroll_lock
 #endif
     ) {
-        delta_scroll_h = (float)mouse_report.x / scroll_div_array[keyboard_config.scroll_div_config] * PLOOPY_DRAGSCROLL_H_COEF;
-        delta_scroll_v = (float)mouse_report.y / scroll_div_array[keyboard_config.scroll_div_config];
-
-        if (is_scroll_snap_auto) {
-            // Based on: https://github.com/iamntz/ploopyx
-            scroll_spec_accumulated_h = (int16_t)scroll_accumulated_h + (int16_t)delta_scroll_h;
-            scroll_spec_accumulated_v = (int16_t)scroll_accumulated_v + (int16_t)delta_scroll_v;
-
-            block_scroll_snap_auto = block_scroll_snap_auto
-                || (abs(scroll_spec_accumulated_h) > PLOOPY_DRAGSCROLL_AUTOSNAP_OFF_THRESHOLD)
-                || (abs(scroll_spec_accumulated_v) > PLOOPY_DRAGSCROLL_AUTOSNAP_OFF_THRESHOLD);
-
-            if (block_scroll_snap_auto) {
-                is_scroll_snap_auto_h = false;
-                is_scroll_snap_auto_v = false;
-            } else if (!is_scroll_snap_auto_h && !is_scroll_snap_auto_v) {
-                if (scroll_spec_accumulated_h > scroll_spec_accumulated_v
-                    && abs((int16_t)scroll_spec_accumulated_h) > PLOOPY_DRAGSCROLL_AUTOSNAP_ON_THRESHOLD
-                ) {
-                    is_scroll_snap_auto_h = true;
-                    if (debug_mouse) {
-                        dprint("Horizontal auto-snap is ON\n");
-                    }
-                } else if (abs((int16_t)scroll_spec_accumulated_v) > PLOOPY_DRAGSCROLL_AUTOSNAP_ON_THRESHOLD) {
-                    is_scroll_snap_auto_v = true;
-                    if (debug_mouse) {
-                        dprint("Vertical auto-snap is ON\n");
-                    }
-                }
-            }
-        }
+        scroll_delta_h = (float)mouse_report.x / scroll_div_array[keyboard_config.scroll_div_config] * PLOOPY_DRAGSCROLL_H_COEF;
+        scroll_delta_v = (float)mouse_report.y / scroll_div_array[keyboard_config.scroll_div_config];
 
         // Based on: https://github.com/adept-hires-scroll-mod/qmk_firmware
-        if (is_scroll_snap_v || is_scroll_snap_auto_v) {
+        if (is_scroll_snap_v) {
             scroll_accumulated_h = 0;
         } else {
-            scroll_accumulated_h += delta_scroll_h;
+            scroll_accumulated_h += scroll_delta_h;
         }
 
-        if (is_scroll_snap_h || is_scroll_snap_auto_h) {
+        if (is_scroll_snap_h) {
             scroll_accumulated_v = 0;
         } else {
-            scroll_accumulated_v += delta_scroll_v;
+            scroll_accumulated_v += scroll_delta_v;
         }
-
 #ifdef POINTING_DEVICE_HIRES_SCROLL_ENABLE
         if (timer_elapsed32(hr_scroll_debounce_timer) < PLOOPY_HRSCROLL_DEBOUNCE) {
             mouse_report.h = 0;
             mouse_report.v = 0;
         } else {
             hr_scroll_debounce_timer = timer_read32();
+
+            float vel_h = scroll_delta_h / scroll_delta_t;
+            float vel_v = scroll_delta_v / scroll_delta_t;
 
             if (is_hires_scroll) {
                 // Assign integer parts of accumulated scroll values to the mouse report
@@ -184,7 +147,6 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
                 // Update accumulated scroll values by subtracting the integer parts
                 scroll_accumulated_h -= (int16_t)scroll_accumulated_h;
                 scroll_accumulated_v -= (int16_t)scroll_accumulated_v;
-
             } else {
                 // Emulate no hires scrolling by only reporting in increments of the resolution
                 hires_scroll_resolution = pointing_device_get_hires_scroll_resolution();
@@ -198,18 +160,27 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
     #endif
                 scroll_accumulated_h -= mouse_report.h;
             }
+
+            if ((mouse_report.x != 0 || mouse_report.y != 0) && debug_mouse) {
+                dprintf("ML: x/y=%d/%d, h/v=%d/%d, dh/dv=%d/%d, ah/av=%d/%d\n",
+                        mouse_report.x, mouse_report.y,
+                        mouse_report.h, mouse_report.v,
+                        (int)scroll_delta_h, (int)scroll_delta_v,
+                        (int)scroll_accumulated_h, (int)scroll_accumulated_v
+                );
+            }
         }
 #else
-            mouse_report.h = (int8_t)scroll_accumulated_h;
+        mouse_report.h = (int8_t)scroll_accumulated_h;
     #ifdef PLOOPY_DRAGSCROLL_INVERT
-            mouse_report.v = -(int8_t)scroll_accumulated_v;
-            scroll_accumulated_v += (int8_t)scroll_accumulated_v;
+        mouse_report.v = -(int8_t)scroll_accumulated_v;
+        scroll_accumulated_v += (int8_t)scroll_accumulated_v;
     #else
-            mouse_report.v = (int8_t)scroll_accumulated_v;
-            scroll_accumulated_v -= (int8_t)scroll_accumulated_v;
+        mouse_report.v = (int8_t)scroll_accumulated_v;
+        scroll_accumulated_v -= (int8_t)scroll_accumulated_v;
     #endif
-            // Update accumulated scroll values by subtracting the integer parts
-            scroll_accumulated_h -= (int8_t)scroll_accumulated_h;
+        // Update accumulated scroll values by subtracting the integer parts
+        scroll_accumulated_h -= (int8_t)scroll_accumulated_h;
 #endif
 
         // Clear the X and Y values of the mouse report
@@ -217,15 +188,15 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
         mouse_report.y = 0;
     }
 
-    return mouse_report;
+    return pointing_device_task_user(mouse_report);
 }
 
 bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
     if (debug_mouse) {
     #ifdef KEYCODE_STRING_ENABLE
-        dprintf("KL: kc=0x%04X, kcs=%s, row/col=%2u/%2u, pressed=%u, int=%u, count=%u\n",
+        dprintf("KL: kc=0x%04X, kcs=%s, row/col=%2u/%2u, pressed=%u, time=%u",
             keycode, get_keycode_string(keycode), record->event.key.row, record->event.key.col,
-            record->event.pressed, record->tap.interrupted, record->tap.count
+            record->event.pressed, record->event.time
         );
     #else
         dprintf("KL: kc=0x%04X, row/col=%2u/%2u, pressed=%u, int=%u, count=%u\n",
@@ -252,11 +223,6 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
             mouse_moved = false;
             scroll_accumulated_h = 0;
             scroll_accumulated_v = 0;
-            delta_scroll_h = 0;
-            delta_scroll_v = 0;
-            is_scroll_snap_auto_h = false;
-            is_scroll_snap_auto_v = false;
-            block_scroll_snap_auto = false;
             drag_scroll_press_timer = timer_read();
         } else if (!mouse_moved && timer_elapsed(drag_scroll_press_timer) < TAPPING_TERM) {
             tap_code16(MS_BTN3);
@@ -278,6 +244,9 @@ bool process_record_kb(uint16_t keycode, keyrecord_t* record) {
                 break;
             case SCROLL_SNAP_V:
                 toggle_scroll_snap_v();
+                break;
+            case SCROLL_SNAP_AUTO:
+                toggle_scroll_snap_auto();
                 break;
             case SCROLL_SNAP_OFF:
                 set_scroll_snap_off();
@@ -339,7 +308,6 @@ void cycle_scroll_div(void) {
         );
     }
 }
-
 
 #ifndef DOXYGEN_SUPPRESS
 /* ══════════════════════ *

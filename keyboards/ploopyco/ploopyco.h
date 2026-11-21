@@ -40,6 +40,7 @@ enum ploopy_keycodes {
     HIRES_SCROLL,
     SCROLL_SNAP_V,
     SCROLL_SNAP_H,
+    SCROLL_SNAP_AUTO,
     SCROLL_SNAP_OFF,
     VLM_SCROLL_DIV_CONFIG,
     SAVE_CONFIG,

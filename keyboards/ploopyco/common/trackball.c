@@ -107,3 +107,9 @@ void set_scroll_snap_auto(bool on) {
 void toggle_scroll_snap_auto(void) {
     set_scroll_snap_auto(!is_scroll_snap_auto);
 }
+
+void set_scroll_snap_off(void) {
+    set_scroll_snap_auto(false);
+    set_scroll_snap_h(false);
+    set_scroll_snap_v(false);
+}
