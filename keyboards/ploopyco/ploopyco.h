@@ -38,20 +38,15 @@ enum ploopy_keycodes {
     DRAG_SCROLL_OR_CLICK3,
     SCROLL_DIV_CONFIG,
     HIRES_SCROLL,
-    SCROLL_SNAP_V,
-    SCROLL_SNAP_H,
-    SCROLL_SNAP_AUTO,
-    SCROLL_SNAP_OFF,
+    SCROLL_AXIS_LOCK_H,
+    SCROLL_AXIS_LOCK_V,
+    SCROLL_AXIS_LOCK_CLEAR,
+    SCROLL_AUTOSNAP,
     VLM_SCROLL_DIV_CONFIG,
     SAVE_CONFIG,
 };
 
 bool encoder_update_user(uint8_t index, bool clockwise);
 bool encoder_update_kb(uint8_t index, bool clockwise);
-void toggle_drag_scroll(void);
-void toggle_hires_scroll(void);
-void toggle_scroll_snap_h(void);
-void toggle_scroll_snap_v(void);
-void set_volume_scroll(bool state);
 void cycle_dpi(void);
 void cycle_scroll_div(void);

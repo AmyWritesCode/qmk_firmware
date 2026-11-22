@@ -73,5 +73,5 @@ Note that these custom keycodes are not currently known by VIA, as they are not 
 |-------------------------------|-------------|---------------------------------------------------------|
 |`SCROLL_DIV_CONFIG`|`CUSTOM(2)`|Cycles through scroll sensitivty options with each press. State is saved to persistent memory, so will be saved across power cycles.|
 |`HIRES_SCROLL`|`CUSTOM(3)`|Toggle high-resolution scrolling on and off. The QMK implementation of high-resolution scrolling currently does not allow for dynamic enable/disable of high-resolution scrolling (in other words, changing the scrolling resolution reported to the host dynamically). In order to emulate disablement of hires scrolling, the firmware will report scrolling events only in increments of the statically defined scrolling resolution.|
-|`SCROLL_SNAP_V`|`CUSTOM(4)`|Toggles vertical scroll snap on and off. When on, horizontal scrolling is disabled. When turned on, horizontal scroll snap will be turned off.|
-|`SCROLL_SNAP_H`|`CUSTOM(5)`|Toggles horizontal scroll snap on and off. When on, vertical scrolling is disabled. When turned on, vertical scroll snap will be turned off.|
+|`SCROLL_AXIS_LOCK_V`|`CUSTOM(4)`|Toggles vertical scroll snap on and off. When on, horizontal scrolling is disabled. When turned on, horizontal scroll snap will be turned off.|
+|`SCROLL_AXIS_LOCK_H`|`CUSTOM(5)`|Toggles horizontal scroll snap on and off. When on, vertical scrolling is disabled. When turned on, vertical scroll snap will be turned off.|

@@ -17,12 +17,20 @@
 #include "debug.h"
 #include "trackball.h"
 
-bool is_hires_scroll       = true;
-bool is_volume_scroll      = false;
-bool is_drag_scroll        = false;
-bool is_scroll_snap_h      = false;
-bool is_scroll_snap_v      = false;
-bool is_scroll_snap_auto   = true;
+bool is_hires_scroll             = true;
+bool is_volume_scroll            = false;
+bool is_drag_scroll              = false;
+bool is_scroll_axis_lock_h       = false;
+bool is_scroll_axis_lock_v       = false;
+snap_axis_t scroll_autosnap_axis = SNAP_AXIS_OFF;
+
+#ifdef CONSOLE_ENABLE
+static char * snap_axis_names[] = {
+    #define TO_STR(name) #name,
+        FOR_SNAP_AXIS(TO_STR)
+    #undef TO_STR
+};
+#endif
 
 void toggle_hires_scroll(void) {
     is_hires_scroll ^= 1;
@@ -50,6 +58,7 @@ void set_drag_scroll(bool on) {
         if (debug_mouse) {
             dprintf("Drag-scrolling is %s\n", is_drag_scroll ? "ON" : "OFF");
         }
+        reset_scroll_autosnap();
     }
 }
 
@@ -57,59 +66,72 @@ void toggle_drag_scroll(void) {
     set_drag_scroll(!is_drag_scroll);
 }
 
-void set_scroll_snap_h(bool on) {
-    if (is_scroll_snap_h != on) {
-        is_scroll_snap_h = on;
+void set_scroll_axis_lock_h(bool on) {
+    if (is_scroll_axis_lock_h != on) {
+        is_scroll_axis_lock_h = on;
         if (debug_mouse) {
-            dprintf("Horizontal snap is %s\n", is_scroll_snap_h ? "ON" : "OFF");
+            dprintf("Horizontal snap is %s\n", is_scroll_axis_lock_h ? "ON" : "OFF");
         }
-        if (is_scroll_snap_h) {
-            set_scroll_snap_v(false);
-            set_scroll_snap_auto(false);
+        if (is_scroll_axis_lock_h) {
+            set_scroll_axis_lock_v(false);
+            set_scroll_autosnap(SNAP_AXIS_OFF);
         }
     }
 }
 
-void toggle_scroll_snap_h(void) {
-    set_scroll_snap_h(!is_scroll_snap_h);
+void toggle_scroll_axis_lock_h(void) {
+    set_scroll_axis_lock_h(!is_scroll_axis_lock_h);
 }
 
-void toggle_scroll_snap_v(void) {
-    set_scroll_snap_v(!is_scroll_snap_v);
-}
-
-void set_scroll_snap_v(bool on) {
-    if (is_scroll_snap_v != on) {
-        is_scroll_snap_v = on;
+void set_scroll_axis_lock_v(bool on) {
+    if (is_scroll_axis_lock_v != on) {
+        is_scroll_axis_lock_v = on;
         if (debug_mouse) {
-            dprintf("Vertical snap is %s\n", is_scroll_snap_v ? "ON" : "OFF");
+            dprintf("Vertical snap is %s\n", is_scroll_axis_lock_v ? "ON" : "OFF");
         }
-        if (is_scroll_snap_v) {
-            set_scroll_snap_h(false);
-            set_scroll_snap_auto(false);
+        if (is_scroll_axis_lock_v) {
+            set_scroll_axis_lock_h(false);
+            set_scroll_autosnap(SNAP_AXIS_OFF);
         }
     }
 }
 
-void set_scroll_snap_auto(bool on) {
-    if (is_scroll_snap_auto != on) {
-        is_scroll_snap_auto = on;
+void toggle_scroll_axis_lock_v(void) {
+    set_scroll_axis_lock_v(!is_scroll_axis_lock_v);
+}
+
+void set_scroll_autosnap(snap_axis_t axis) {
+    if (scroll_autosnap_axis != axis) {
+        scroll_autosnap_axis = axis;
         if (debug_mouse) {
-            dprintf("Auto scroll snap is %s\n", is_scroll_snap_auto ? "ON" : "OFF");
-        }
-        if (is_scroll_snap_auto) {
-            set_scroll_snap_h(false);
-            set_scroll_snap_v(false);
+#ifdef CONSOLE_ENABLE
+            dprintf("Auto-snap axis is %s\n", snap_axis_names[axis]);
+#else
+            dprintf("Auto-snap axis # is %u\n", axis);
+#endif
         }
     }
 }
 
-void toggle_scroll_snap_auto(void) {
-    set_scroll_snap_auto(!is_scroll_snap_auto);
+void toggle_scroll_autosnap(void) {
+    if (scroll_autosnap_axis == SNAP_AXIS_OFF) {
+        set_scroll_autosnap(SNAP_AXIS_NONE);
+    } else {
+        set_scroll_autosnap(SNAP_AXIS_OFF);
+    }
 }
 
-void set_scroll_snap_off(void) {
-    set_scroll_snap_auto(false);
-    set_scroll_snap_h(false);
-    set_scroll_snap_v(false);
+void reset_scroll_autosnap(void) {
+    if (is_scroll_axis_snapped()) {
+        set_scroll_autosnap(SNAP_AXIS_NONE);
+    }
+}
+
+void clear_axis_lock(void) {
+    set_scroll_axis_lock_h(false);
+    set_scroll_axis_lock_v(false);
+}
+
+bool is_scroll_axis_snapped(void) {
+    return scroll_autosnap_axis == SNAP_AXIS_HORZ || scroll_autosnap_axis == SNAP_AXIS_VERT;
 }
